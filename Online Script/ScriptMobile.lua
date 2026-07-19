@@ -27,7 +27,6 @@ local Window = Fluent:CreateWindow({
     TitleIcon = "rbxassetid://102225156206159",
     UserInfoTop = true,
     UserInfoTitle = "Hello?",
-    UserInfoSubtitle = LocalPlayer.DisplayName,
     MinimizeKey = Enum.KeyCode.LeftControl,
 })
 
