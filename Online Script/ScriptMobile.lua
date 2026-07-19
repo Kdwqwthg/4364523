@@ -14,7 +14,7 @@ local Window = Fluent:CreateWindow({
     Tags = {
         { Text = " Evade Overhaul ", Color = Color3.fromRGB(211, 15, 40) },
     },
-    Version = "Version 3.3",
+    Version = "Version 3.3 Beta",
     Size = UDim2.fromOffset(580, 460),
     Theme = "Blood Red",
     Search = true,
