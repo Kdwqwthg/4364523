@@ -1,12 +1,6 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub X Evade",
+    Title = "Draconic Hub",
     Text = "Welcome Draconic Hub Remake",
-    Icon = "rbxassetid://102225156206159",
-    Duration = 7
-})
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Script Loading...",
-    Text = "Evade Overhaul",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
 })
@@ -26,7 +20,6 @@ local Window = Fluent:CreateWindow({
     Search = true,
     SearchInHeader = true,
     Icons = "rbxassetid://102225156206159",
-    TitleIcon = "rbxassetid://102225156206159",
     UserInfoTop = true,
     UserInfoTitle = "Hello?",
     MinimizeKey = Enum.KeyCode.LeftControl,
