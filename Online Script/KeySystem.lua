@@ -598,7 +598,7 @@ local function executeScript()
     
     local success, errorMsg = pcall(function()
         if selectedPlatform == "Mobile" then
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/Ksndfkssc/87643/refs/heads/main/Online%20Script/ScriptMobile.lua"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/ScriptMobile.lua"))()
         else
             loadstring(game:HttpGet(""))()
         end
