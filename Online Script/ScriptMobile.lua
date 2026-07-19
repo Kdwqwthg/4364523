@@ -2978,6 +2978,296 @@ end)
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
+local currentSettings = {
+    Speed = "1500",
+    JumpCap = "1",
+    AirStrafeAcceleration = "187"
+}
+local appliedOnce = false
+local playerModelPresent = false
+local gameStatsPath = workspace:WaitForChild("Game"):WaitForChild("Stats")
+getgenv().ApplyMode = "Not Optimized"
+local requiredFields = {
+    Friction = true,
+    AirStrafeAcceleration = true,
+    JumpHeight = true,
+    RunDeaccel = true,
+    JumpSpeedMultiplier = true,
+    JumpCap = true,
+    SprintCap = true,
+    WalkSpeedMultiplier = true,
+    BhopEnabled = true,
+    Speed = true,
+    AirAcceleration = true,
+    RunAccel = true,
+    SprintAcceleration = true
+}
+
+local function hasAllFields(tbl)
+    if type(tbl) ~= "table" then return false end
+    for field, _ in pairs(requiredFields) do
+        if rawget(tbl, field) == nil then return false end
+    end
+    return true
+end
+
+local function getConfigTables()
+    local tables = {}
+    for _, obj in ipairs(getgc(true)) do
+        local success, result = pcall(function()
+            if hasAllFields(obj) then return obj end
+        end)
+        if success and result then
+            table.insert(tables, result)
+        end
+    end
+    return tables
+end
+
+local function applyToTables(callback)
+    local targets = getConfigTables()
+    if #targets == 0 then return end
+    
+    if getgenv().ApplyMode == "Optimized" then
+        task.spawn(function()
+            for i, tableObj in ipairs(targets) do
+                if tableObj and typeof(tableObj) == "table" then
+                    pcall(callback, tableObj)
+                end
+                
+                if i % 3 == 0 then
+                    task.wait()
+                end
+            end
+        end)
+    else
+        for i, tableObj in ipairs(targets) do
+            if tableObj and typeof(tableObj) == "table" then
+                pcall(callback, tableObj)
+            end
+        end
+    end
+end
+
+local function applyStoredSettings()
+    local settings = {
+        {field = "Speed", value = tonumber(currentSettings.Speed)},
+        {field = "JumpCap", value = tonumber(currentSettings.JumpCap)},
+        {field = "AirStrafeAcceleration", value = tonumber(currentSettings.AirStrafeAcceleration)}
+    }
+    
+    for _, setting in ipairs(settings) do
+        if setting.value and tostring(setting.value) ~= "1500" and tostring(setting.value) ~= "1" and tostring(setting.value) ~= "187" then
+            applyToTables(function(obj)
+                obj[setting.field] = setting.value
+            end)
+        end
+    end
+end
+
+local function applySettingsWithDelay()
+    if not playerModelPresent or appliedOnce then
+        return
+    end
+    
+    appliedOnce = true
+    
+    local settings = {
+        {field = "Speed", value = tonumber(currentSettings.Speed), delay = math.random(1, 14)},
+        {field = "JumpCap", value = tonumber(currentSettings.JumpCap), delay = math.random(1, 14)},
+        {field = "AirStrafeAcceleration", value = tonumber(currentSettings.AirStrafeAcceleration), delay = math.random(1, 14)}
+    }
+    
+    for _, setting in ipairs(settings) do
+        if setting.value and tostring(setting.value) ~= "1500" and tostring(setting.value) ~= "1" and tostring(setting.value) ~= "187" then
+            task.spawn(function()
+                task.wait(setting.delay)
+                applyToTables(function(obj)
+                    obj[setting.field] = setting.value
+                end)
+            end)
+        end
+    end
+end
+
+local function isPlayerModelPresent()
+    local GameFolder = workspace:FindFirstChild("Game")
+    local PlayersFolder = GameFolder and GameFolder:FindFirstChild("Players")
+    return PlayersFolder and PlayersFolder:FindFirstChild(player.Name) ~= nil
+end
+
+local function syncSpeedInput(Value)
+    local val = tonumber(Value)
+    if val and val >= 1450 and val <= 100008888 then
+        currentSettings.Speed = tostring(val)
+        applyToTables(function(obj)
+            obj.Speed = val
+        end)
+    end
+end
+
+SpeedInput = MiscTab:AddInput("SpeedInput", {
+    Title = "Player Speed",
+    Default = currentSettings.Speed,
+    Placeholder = "Default 1500",
+    Numeric = true,
+    Finished = false,
+    Callback = syncSpeedInput
+})
+
+SpeedInput:OnChanged(syncSpeedInput)
+
+JumpPowerInput = MiscTab:AddInput("JumpPowerInput", {
+    Title = "Player Jump",
+    Default = "3.5",
+    Placeholder = "",
+    Numeric = true,
+    Finished = true,
+    Callback = function(Value)
+        if Value and tonumber(Value) then
+            JumpPowerValue = tonumber(Value)
+        end
+    end
+})
+
+JumpCapInput = MiscTab:AddInput("JumpCapInput", {
+    Title = "Player Jump Cap",
+    Default = currentSettings.JumpCap,
+    Placeholder = "Default 1",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 0.1 and val <= 5088888 then
+            currentSettings.JumpCap = tostring(val)
+            applyToTables(function(obj)
+                obj.JumpCap = val
+            end)
+        end
+    end
+})
+
+local function syncStrafeInput(Value)
+    local val = tonumber(Value)
+    if val and val >= 1 and val <= 1000888888 then
+        currentSettings.AirStrafeAcceleration = tostring(val)
+        applyToTables(function(obj)
+            obj.AirStrafeAcceleration = val
+        end)
+    end
+end
+
+StrafeInput = MiscTab:AddInput("StrafeInput", {
+    Title = "Player Strafe Acceleration",
+    Default = currentSettings.AirStrafeAcceleration,
+    Placeholder = "Default 187",
+    Numeric = true,
+    Finished = false,
+    Callback = syncStrafeInput
+})
+
+StrafeInput:OnChanged(syncStrafeInput)
+
+local function syncApplyMethod(Value)
+    getgenv().ApplyMode = Value
+    local s = tonumber(currentSettings.Speed)
+    local j = tonumber(currentSettings.JumpCap)
+    local a = tonumber(currentSettings.AirStrafeAcceleration)
+    applyToTables(function(obj)
+        if s then obj.Speed = s end
+        if j then obj.JumpCap = j end
+        if a then obj.AirStrafeAcceleration = a end
+    end)
+end
+
+ApplyMethodDropdown = MiscTab:AddDropdown("ApplyMethodDropdown", {
+    Title = "Select Apply Method",
+    Values = {"Not Optimized", "Optimized"},
+    Multi = false,
+    Default = getgenv().ApplyMode,
+    Callback = syncApplyMethod
+})
+
+ApplyMethodDropdown:OnChanged(syncApplyMethod)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ChangeSettingRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Data"):WaitForChild("ChangeSetting")
+local UpdatedEvent = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Client"):WaitForChild("Settings"):WaitForChild("Updated")
+
+FovInput = MiscTab:AddInput("FovInput", {
+    Title = "Player FOV",
+    Default = "",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local num = tonumber(Value)
+        if num then
+            ChangeSettingRemote:InvokeServer(2, num)
+            UpdatedEvent:Fire(2, num)
+        end
+    end
+})
+
+JumpPowerValue = 3.5
+MaxJumpsValue = math.huge
+
+CurrentJumpCount = 0
+JumpHumanoid = nil
+JumpRootPart = nil
+
+Players.LocalPlayer.CharacterAdded:Connect(function(newChar)
+    task.wait(0.5)
+    JumpHumanoid = newChar:FindFirstChild("Humanoid")
+    JumpRootPart = newChar:FindFirstChild("HumanoidRootPart")
+    if JumpHumanoid and JumpRootPart then
+        CurrentJumpCount = 0
+        JumpHumanoid.StateChanged:Connect(function(oldState, newState)
+            if newState == Enum.HumanoidStateType.Landed then
+                CurrentJumpCount = 0
+            end
+        end)
+        JumpHumanoid.Jumping:Connect(function(isJumping)
+            if isJumping and CurrentJumpCount < MaxJumpsValue then
+                CurrentJumpCount = CurrentJumpCount + 1
+                JumpHumanoid.JumpHeight = JumpPowerValue
+                if CurrentJumpCount > 1 and JumpRootPart then
+                    JumpRootPart:ApplyImpulse(Vector3.new(0, JumpPowerValue * JumpRootPart.Mass, 0))
+                end
+            end
+        end)
+    end
+end)
+
+if Players.LocalPlayer.Character then
+    task.spawn(function()
+        task.wait(0.5)
+        JumpHumanoid = Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        JumpRootPart = Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if JumpHumanoid and JumpRootPart then
+            CurrentJumpCount = 0
+            JumpHumanoid.StateChanged:Connect(function(oldState, newState)
+                if newState == Enum.HumanoidStateType.Landed then
+                    CurrentJumpCount = 0
+                end
+            end)
+            JumpHumanoid.Jumping:Connect(function(isJumping)
+                if isJumping and CurrentJumpCount < MaxJumpsValue then
+                    CurrentJumpCount = CurrentJumpCount + 1
+                    JumpHumanoid.JumpHeight = JumpPowerValue
+                    if CurrentJumpCount > 1 and JumpRootPart then
+                        JumpRootPart:ApplyImpulse(Vector3.new(0, JumpPowerValue * JumpRootPart.Mass, 0))
+                    end
+                end
+            end)
+        end
+    end)
+end
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    task.wait(0.5)
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+end)
+
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
 
 BounceToggle = MiscTab:AddToggle("BounceToggle", {
@@ -3062,6 +3352,409 @@ player.CharacterAdded:Connect(function()
         
         task.wait(1)
         updateBounce()
+    end
+end)
+
+MiscTab:AddSection("Revive Players", "solar/heart-pulse-bold")
+
+local function createGradientButton(parent, position, size, text, onClickCallback)
+    local button = Instance.new("Frame")
+    button.Name = "GradientBtn"
+    button.BackgroundTransparency = 0.7
+    button.Size = size
+    button.Position = position
+    button.Draggable = true
+    button.Active = true
+    button.Selectable = true
+    button.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.2, 0)
+    corner.Parent = button
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+    }
+    gradient.Rotation = 0
+    gradient.Parent = button
+
+    local gradientAnimation
+    gradientAnimation = RunService.RenderStepped:Connect(function(delta)
+        gradient.Rotation = (gradient.Rotation + 90 * delta) % 360
+    end)
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(139, 0, 0)  
+    stroke.Thickness = 2
+    stroke.Parent = button
+
+    local label = Instance.new("TextLabel")
+    label.Text = text
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 16
+    label.Font = Enum.Font.GothamBold
+    label.Parent = button
+
+    local clicker = Instance.new("TextButton")
+    clicker.Size = UDim2.new(1, 0, 1, 0)
+    clicker.BackgroundTransparency = 1
+    clicker.Text = ""
+    clicker.ZIndex = 5
+    clicker.Parent = button
+
+    button.Destroying:Connect(function()
+        if gradientAnimation then
+            gradientAnimation:Disconnect()
+        end
+    end)
+
+    
+    local UserInputService = game:GetService("UserInputService")
+    local activeTouchId = nil  
+    local startPos = nil
+    local startButtonPos = nil
+    
+    
+    local function updateButtonPosition(touchPos)
+        if not startPos or not startButtonPos then return end
+        local delta = touchPos - startPos
+        button.Position = UDim2.new(startButtonPos.X.Scale, startButtonPos.X.Offset + delta.X,
+                                    startButtonPos.Y.Scale, startButtonPos.Y.Offset + delta.Y)
+    end
+    
+    
+    local function resetDrag()
+        activeTouchId = nil
+        startPos = nil
+        startButtonPos = nil
+        stroke.Color = Color3.fromRGB(139, 0, 0)  
+    end
+    
+    
+    clicker.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            local touchId = input.UserInputState
+            
+            
+            if activeTouchId ~= nil then
+                return
+            end
+            
+            activeTouchId = touchId
+            startPos = input.Position
+            startButtonPos = button.Position
+            
+            
+            stroke.Color = Color3.fromRGB(255, 0, 0)
+            
+            
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    resetDrag()
+                    connection:Disconnect()
+                end
+            end)
+            
+        
+        elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if activeTouchId ~= nil then return end
+            
+            activeTouchId = "mouse"
+            startPos = input.Position
+            startButtonPos = button.Position
+            
+            stroke.Color = Color3.fromRGB(255, 0, 0)
+            
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    resetDrag()
+                    connection:Disconnect()
+                end
+            end)
+        end
+    end)
+
+    
+    clicker.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            if activeTouchId ~= nil then
+                updateButtonPosition(input.Position)
+            end
+        elseif input.UserInputType == Enum.UserInputType.MouseMovement then
+            if activeTouchId ~= nil then
+                updateButtonPosition(input.Position)
+            end
+        end
+    end)
+
+    return button, clicker, stroke
+end
+
+local InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
+    Title = "Instant Revive",
+    Default = false
+})
+
+local ReviveWhileEmoteToggle = MiscTab:AddToggle("ReviveWhileEmoteToggle", {
+    Title = "Instant Revive While Emoting",
+    Default = false
+})
+
+local ReviveDelaySlider = MiscTab:AddSlider("ReviveDelaySlider", {
+    Title = "Revive Delay",
+    Min = 0,
+    Max = 1,
+    Default = 0.15,
+    Rounding = 2,
+    Callback = function(value)
+        getgenv().InstantReviveDelay = value
+    end
+})
+getgenv().InstantReviveDelay = 0.15
+
+local InstantReviveModule = (function()
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local LocalPlayer = Players.LocalPlayer
+
+    local reviveRange = 10
+    local loopDelay = getgenv().InstantReviveDelay or 0.15
+
+    local enabled = false
+    local handle = nil
+    local stateConnection = nil
+    local isCurrentlyEmoting = false
+
+    local interactEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Character"):WaitForChild("Interact")
+
+    local function updateEmoteStatus()
+        if not LocalPlayer.Character then
+            isCurrentlyEmoting = false
+            return
+        end
+        local state = LocalPlayer.Character:GetAttribute("State")
+        isCurrentlyEmoting = state and string.find(state, "Emoting")
+    end
+
+    local function isPlayerDowned(pl)
+        if not pl or not pl.Character then return false end
+        local char = pl.Character
+        if char:GetAttribute("Downed") then return true end
+        local hum = char:FindFirstChild("Humanoid")
+        if hum and hum.Health <= 0 then return true end
+        return false
+    end
+
+    local function reviveLoop()
+        while enabled do
+            if isCurrentlyEmoting and not Options.ReviveWhileEmoteToggle.Value then
+                task.wait(0.3)
+                continue
+            end
+
+            local myChar = LocalPlayer.Character
+            if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                local myHRP = myChar.HumanoidRootPart
+
+                for _, pl in Players:GetPlayers() do
+                    if pl ~= LocalPlayer and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
+                        if isPlayerDowned(pl) then
+                            local dist = (myHRP.Position - pl.Character.HumanoidRootPart.Position).Magnitude
+                            if dist <= reviveRange then
+                                pcall(function()
+                                    interactEvent:FireServer("Revive", true, pl.Name)
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+
+            task.wait(loopDelay)
+        end
+    end
+
+    local function start()
+        if handle then return end
+        enabled = true
+        updateEmoteStatus()
+
+        if LocalPlayer.Character then
+            stateConnection = LocalPlayer.Character:GetAttributeChangedSignal("State"):Connect(updateEmoteStatus)
+        end
+        LocalPlayer.CharacterAdded:Connect(function(char)
+            if stateConnection then stateConnection:Disconnect() end
+            stateConnection = char:GetAttributeChangedSignal("State"):Connect(updateEmoteStatus)
+            updateEmoteStatus()
+        end)
+
+        handle = task.spawn(reviveLoop)
+    end
+
+    local function stop()
+        enabled = false
+        if handle then task.cancel(handle) handle = nil end
+        if stateConnection then stateConnection:Disconnect() stateConnection = nil end
+        isCurrentlyEmoting = false
+    end
+
+    return {
+        Start = start,
+        Stop = stop,
+        SetDelay = function(d) loopDelay = d end,
+    }
+end)()
+
+InstantReviveToggle:OnChanged(function(state)
+    if state then
+        InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
+        InstantReviveModule.Start()
+    else
+        InstantReviveModule.Stop()
+    end
+end)
+
+ReviveDelaySlider:OnChanged(function(value)
+    getgenv().InstantReviveDelay = value
+    InstantReviveModule.SetDelay(value)
+end)
+
+local instantReviveButtonScreenGui = nil
+local instantReviveButton = nil
+local instantReviveKeybindValue = "R"
+local instantReviveButtonState = false
+
+local function createInstantReviveButton()
+    local CoreGui = game:GetService("CoreGui")
+    
+    if instantReviveButtonScreenGui then
+        instantReviveButtonScreenGui:Destroy()
+        instantReviveButtonScreenGui = nil
+    end
+    
+    instantReviveButtonScreenGui = Instance.new("ScreenGui")
+    instantReviveButtonScreenGui.Name = "InstantReviveButtonGUI"
+    instantReviveButtonScreenGui.ResetOnSpawn = false
+    instantReviveButtonScreenGui.Parent = CoreGui
+    
+    local buttonSize = 180
+    if Options.InstantReviveButtonSizeInput and Options.InstantReviveButtonSizeInput.Value and tonumber(Options.InstantReviveButtonSizeInput.Value) then
+        buttonSize = tonumber(Options.InstantReviveButtonSizeInput.Value)
+    end
+    local btnWidth = math.max(150, math.min(buttonSize, 400))
+    local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
+    
+    
+    local btn, clicker, stroke = createGradientButton(
+        instantReviveButtonScreenGui,
+        UDim2.new(0.5, -btnWidth/2, 0.5, -btnHeight/2),
+        UDim2.new(0, btnWidth, 0, btnHeight),
+        instantReviveButtonState and "Instant Revive:On" or "Instant Revive:Off"
+    )
+    
+    clicker.MouseButton1Click:Connect(function()
+        
+        instantReviveButtonState = not instantReviveButtonState
+        
+        
+        if btn:FindFirstChild("TextLabel") then
+            btn.TextLabel.Text = instantReviveButtonState and "Instant Revive:On" or "Instant Revive:Off"
+        end
+        
+        
+        if instantReviveButtonState then
+            InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
+            InstantReviveModule.Start()
+        else
+            InstantReviveModule.Stop()
+        end
+        
+        
+        if Options.InstantReviveToggle then
+            Options.InstantReviveToggle:SetValue(instantReviveButtonState)
+        end
+    end)
+    
+    instantReviveButton = btn
+    return instantReviveButtonScreenGui
+end
+
+InstantReviveButtonToggle = MiscTab:AddToggle("InstantReviveButtonToggle", {
+    Title = "Instant Revive Button GUI",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            createInstantReviveButton()
+        else
+            if instantReviveButtonScreenGui then
+                instantReviveButtonScreenGui:Destroy()
+                instantReviveButtonScreenGui = nil
+            end
+        end
+    end
+})
+
+InstantReviveKeybind = MiscTab:AddKeybind("InstantReviveKeybind", {
+    Title = "Instant Revive Keybind",
+    Mode = "Toggle",
+    Default = "R",
+    ChangedCallback = function(New)
+        instantReviveKeybindValue = New
+    end,
+    Callback = function()
+        
+        instantReviveButtonState = not instantReviveButtonState
+        
+        
+        if instantReviveButtonState then
+            InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
+            InstantReviveModule.Start()
+        else
+            InstantReviveModule.Stop()
+        end
+        
+        
+        if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("GradientBtn") then
+            local button = instantReviveButtonScreenGui:FindFirstChild("GradientBtn")
+            if button and button:FindFirstChild("TextLabel") then
+                button.TextLabel.Text = instantReviveButtonState and "Instant Revive:On" or "Instant Revive:Off"
+            end
+        end
+        
+        
+        if Options.InstantReviveToggle then
+            Options.InstantReviveToggle:SetValue(instantReviveButtonState)
+        end
+    end
+})
+
+InstantReviveToggle:OnChanged(function(Value)
+    instantReviveButtonState = Value
+    
+    
+    if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("GradientBtn") then
+        local button = instantReviveButtonScreenGui:FindFirstChild("GradientBtn")
+        if button and button:FindFirstChild("TextLabel") then
+            button.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+        end
+    end
+end)
+
+InstantReviveButtonToggle:OnChanged(function(Value)
+    if Value then
+        createInstantReviveButton()
+    else
+        if instantReviveButtonScreenGui then
+            instantReviveButtonScreenGui:Destroy()
+            instantReviveButtonScreenGui = nil
+        end
     end
 end)
 
