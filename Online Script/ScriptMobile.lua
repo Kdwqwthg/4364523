@@ -10,12 +10,12 @@ local InterfaceManager = Fluent.InterfaceManager
 local Window = Fluent:CreateWindow({
     Title = "Draconic-X-Remake",
     SubTitle = "Made by Unknownproooolucky",
-    TabWidth = isMobile and 130 or 160,
+    TabWidth = 160,
     Tags = {
         { Text = " Evade Overhaul ", Color = Color3.fromRGB(211, 15, 40) },
     },
     Version = "Version 3.3",
-    Size = isMobile and UDim2.fromOffset(480, 490) or UDim2.fromOffset(580, 560),
+    Size = UDim2.fromOffset(580, 460),
     Theme = "Blood Red",
     Search = true,
     SearchInHeader = true,
