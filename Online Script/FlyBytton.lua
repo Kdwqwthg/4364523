@@ -98,7 +98,7 @@ function module.init(fluentWindow)
     backgroundImage.AnchorPoint = Vector2.new(0.5, 0.5)
     backgroundImage.Position = UDim2.new(0.5, 0, 0.5, 0)
     backgroundImage.BackgroundTransparency = 1
-    backgroundImage.Image = "rbxassetid://72879616626375"
+    backgroundImage.Image = "rbxassetid://109694296016043"
     backgroundImage.ZIndex = 1
     backgroundImage.Parent = topImage
     backgroundImage.Interactable = false
