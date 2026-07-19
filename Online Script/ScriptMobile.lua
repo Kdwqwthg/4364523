@@ -11,7 +11,6 @@ game:GetService("StarterGui"):SetCore("SendNotification", {
 local Fluent = loadstring(game:HttpGet("https://github.com/StyearX/Fluent-modded/releases/download/1.5.5/FluentPro"))()
 local SaveManager = Fluent.SaveManager
 local InterfaceManager = Fluent.InterfaceManager
-local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled and not UserInputService.KeyboardEnabled
 local Window = Fluent:CreateWindow({
     Title = "Draconic-X-Remake",
     SubTitle = "Made by Unknownproooolucky",
