@@ -1330,13 +1330,11 @@ TimerDisplayToggle:OnChanged(function(state)
             local pg = player.PlayerGui
             
             
-            local shared = pg:FindFirstChild("Shared")
-            local hud = shared and shared:FindFirstChild("HUD")
+            local gameGui = pg:FindFirstChild("Game")
+            local hud = gameGui and gameGui:FindFirstChild("HUD")
             local overlay = hud and hud:FindFirstChild("Overlay")
-            local default = overlay and overlay:FindFirstChild("Default")
-            local ro = default and default:FindFirstChild("RoundOverlay")
-            local round = ro and ro:FindFirstChild("Round")
-            local timer = round and round:FindFirstChild("RoundTimer")
+            local roundOverlay = overlay and overlay:FindFirstChild("RoundOverlay")
+            local roundTimer = roundOverlay and roundOverlay:FindFirstChild("RoundTimer")
             
             if timer then
                 timer.Visible = true
@@ -1359,13 +1357,11 @@ TimerDisplayToggle:OnChanged(function(state)
         local player = game:GetService("Players").LocalPlayer
         local pg = player.PlayerGui
         
-        local shared = pg:FindFirstChild("Shared")
-        local hud = shared and shared:FindFirstChild("HUD")
+        local gameGui = pg:FindFirstChild("Game")
+        local hud = gameGui and gameGui:FindFirstChild("HUD")
         local overlay = hud and hud:FindFirstChild("Overlay")
-        local default = overlay and overlay:FindFirstChild("Default")
-        local ro = default and default:FindFirstChild("RoundOverlay")
-        local round = ro and ro:FindFirstChild("Round")
-        local timer = round and round:FindFirstChild("RoundTimer")
+        local roundOverlay = overlay and overlay:FindFirstChild("RoundOverlay")
+        local roundTimer = roundOverlay and roundOverlay:FindFirstChild("RoundTimer")
         
         if timer then
             timer.Visible = false
