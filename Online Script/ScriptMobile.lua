@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 2",
+    Title = "Draconic Hub 3",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2974,6 +2974,10 @@ end)
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
+-- ============================================
+-- PLAYER ADJUSTMENTS (Misc Tab)
+-- ============================================
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
@@ -3108,23 +3112,12 @@ local function applyFOV(value)
     end
 end
 
-local function createUI()
-    local Fluent = _G.Fluent
-    if not Fluent then return end
+-- Создание UI в MiscTab
+local MiscTab = Window:FindTab("Misc")
+if MiscTab then
+    MiscTab:AddSection("Player Adjustments")
     
-    local Window = _G.Window
-    if not Window then return end
-    
-    local MiscTab = Window.Tabs["Misc"]
-    if not MiscTab then
-        MiscTab = Window:AddTab({ Title = "Misc", Icon = "solar/settings-bold", Favoriteable = true })
-    end
-    
-    if not MiscTab then return end
-    
-    MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
-    
-    MiscTab:AddInput("SpeedInput", {
+    SpeedInput = MiscTab:AddInput("SpeedInput", {
         Title = "Player Speed",
         Default = "1500",
         Placeholder = "Default 1500",
@@ -3139,8 +3132,8 @@ local function createUI()
         end
     })
     
-    MiscTab:AddInput("JumpPowerInput", {
-        Title = "Player Jump",
+    JumpPowerInput = MiscTab:AddInput("JumpPowerInput", {
+        Title = "Player Jump Power",
         Default = "3.5",
         Placeholder = "Default 3.5",
         Numeric = true,
@@ -3154,7 +3147,7 @@ local function createUI()
         end
     })
     
-    MiscTab:AddInput("JumpCapInput", {
+    JumpCapInput = MiscTab:AddInput("JumpCapInput", {
         Title = "Player Jump Cap",
         Default = "1",
         Placeholder = "Default 1",
@@ -3169,7 +3162,7 @@ local function createUI()
         end
     })
     
-    MiscTab:AddInput("StrafeInput", {
+    StrafeInput = MiscTab:AddInput("StrafeInput", {
         Title = "Player Strafe Acceleration",
         Default = "187",
         Placeholder = "Default 187",
@@ -3184,7 +3177,7 @@ local function createUI()
         end
     })
     
-    MiscTab:AddInput("FovInput", {
+    FovInput = MiscTab:AddInput("FovInput", {
         Title = "Player FOV",
         Default = "70",
         Numeric = true,
@@ -3198,7 +3191,7 @@ local function createUI()
         end
     })
     
-    MiscTab:AddDropdown("ApplyMethodDropdown", {
+    ApplyMethodDropdown = MiscTab:AddDropdown("ApplyMethodDropdown", {
         Title = "Select Apply Method",
         Values = {"Not Optimized", "Optimized"},
         Multi = false,
@@ -3213,6 +3206,7 @@ local function createUI()
     })
 end
 
+-- Авто-обновление настроек
 local function startAutoUpdate()
     spawn(function()
         while task.wait(0.5) do
@@ -3225,25 +3219,26 @@ local function startAutoUpdate()
     end)
 end
 
-task.spawn(function()
-    task.wait(2)
-    pcall(createUI)
-    startAutoUpdate()
-    LocalPlayer.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        applySpeed(currentSettings.Speed)
-        applyJumpPower(currentSettings.JumpHeight)
-        applyJumpCap(currentSettings.JumpCap)
-        applyStrafe(currentSettings.AirStrafeAcceleration)
-        applyFOV(currentSettings.FOV)
-    end)
+task.wait(2)
+startAutoUpdate()
+
+-- Применение при респавне
+LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
-    applySpeed(1500)
-    applyJumpPower(3.5)
-    applyJumpCap(1)
-    applyStrafe(187)
-    applyFOV(70)
+    applySpeed(currentSettings.Speed)
+    applyJumpPower(currentSettings.JumpHeight)
+    applyJumpCap(currentSettings.JumpCap)
+    applyStrafe(currentSettings.AirStrafeAcceleration)
+    applyFOV(currentSettings.FOV)
 end)
+
+-- Дефолтные значения
+task.wait(0.5)
+applySpeed(1500)
+applyJumpPower(3.5)
+applyJumpCap(1)
+applyStrafe(187)
+applyFOV(70)
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
 
