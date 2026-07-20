@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 3",
+    Title = "Draconic Hub 4",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2974,10 +2974,6 @@ end)
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
--- ============================================
--- PLAYER ADJUSTMENTS (путь workspace.Players)
--- ============================================
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -2986,7 +2982,8 @@ local currentSettings = {
     Speed = 1500,
     JumpPower = 3.5,
     JumpCap = 1,
-    Strafe = 187
+    Strafe = 187,
+    FOV = 70
 }
 
 local BaseStatsModule = nil
@@ -3010,6 +3007,17 @@ if not BaseStatsModule then
     end
 end
 
+local function applyFOV(value)
+    local Event = ReplicatedStorage:FindFirstChild("Shared") and ReplicatedStorage.Shared:FindFirstChild("UserData") and ReplicatedStorage.Shared.UserData:FindFirstChild("Events") and ReplicatedStorage.Shared.UserData.Events:FindFirstChild("Requests") and ReplicatedStorage.Shared.UserData.Events.Requests:FindFirstChild("SetSetting")
+    if Event then
+        Event:FireServer("FOV", value)
+    end
+    local camera = workspace.CurrentCamera
+    if camera then
+        camera.FieldOfView = value
+    end
+end
+
 local function applyAll()
     if BaseStatsModule then
         BaseStatsModule.Speed = currentSettings.Speed
@@ -3028,9 +3036,10 @@ local function applyAll()
         char:SetAttribute("JumpCap", currentSettings.JumpCap)
         char:SetAttribute("AirStrafeAcceleration", currentSettings.Strafe)
     end
+    
+    applyFOV(currentSettings.FOV)
 end
 
--- ========== ОКОШКИ ==========
 
 MiscTab:AddInput("SpeedInput", {
     Title = "Player Speed",
@@ -3092,20 +3101,31 @@ MiscTab:AddInput("StrafeInput", {
     end
 })
 
--- ========== ПОСТОЯННОЕ ПРИМЕНЕНИЕ ==========
+MiscTab:AddInput("FovInput", {
+    Title = "Player FOV",
+    Default = "70",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 70 and val <= 120 then
+            currentSettings.FOV = val
+            applyAll()
+        end
+    end
+})
+
 spawn(function()
     while task.wait(0.1) do
         applyAll()
     end
 end)
 
--- ========== ПРИМЕНЕНИЕ ПРИ РЕСПАВНЕ ==========
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
     applyAll()
 end)
 
--- ========== ДЕФОЛТНЫЕ ЗНАЧЕНИЯ ==========
 task.wait(0.5)
 applyAll()
 
