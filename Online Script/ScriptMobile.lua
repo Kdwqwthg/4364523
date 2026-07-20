@@ -2974,15 +2974,21 @@ end)
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local currentSettings = {
-    Speed = "1500",
-    JumpCap = "1",
-    AirStrafeAcceleration = "187"
+    Speed = 1500,
+    JumpHeight = 3.5,
+    JumpCap = 1,
+    AirStrafeAcceleration = 187,
+    FOV = 70
 }
-local appliedOnce = false
-local playerModelPresent = false
-local gameStatsPath = workspace:WaitForChild("Game"):WaitForChild("Stats")
+
 getgenv().ApplyMode = "Not Optimized"
+
 local requiredFields = {
     Friction = true,
     AirStrafeAcceleration = true,
@@ -3023,14 +3029,12 @@ end
 local function applyToTables(callback)
     local targets = getConfigTables()
     if #targets == 0 then return end
-    
     if getgenv().ApplyMode == "Optimized" then
         task.spawn(function()
             for i, tableObj in ipairs(targets) do
                 if tableObj and typeof(tableObj) == "table" then
                     pcall(callback, tableObj)
                 end
-                
                 if i % 3 == 0 then
                     task.wait()
                 end
@@ -3045,224 +3049,192 @@ local function applyToTables(callback)
     end
 end
 
-local function applyStoredSettings()
-    local settings = {
-        {field = "Speed", value = tonumber(currentSettings.Speed)},
-        {field = "JumpCap", value = tonumber(currentSettings.JumpCap)},
-        {field = "AirStrafeAcceleration", value = tonumber(currentSettings.AirStrafeAcceleration)}
-    }
-    
-    for _, setting in ipairs(settings) do
-        if setting.value and tostring(setting.value) ~= "1500" and tostring(setting.value) ~= "1" and tostring(setting.value) ~= "187" then
-            applyToTables(function(obj)
-                obj[setting.field] = setting.value
-            end)
-        end
+local function applySpeed(value)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = value
     end
-end
-
-local function applySettingsWithDelay()
-    if not playerModelPresent or appliedOnce then
-        return
-    end
-    
-    appliedOnce = true
-    
-    local settings = {
-        {field = "Speed", value = tonumber(currentSettings.Speed), delay = math.random(1, 14)},
-        {field = "JumpCap", value = tonumber(currentSettings.JumpCap), delay = math.random(1, 14)},
-        {field = "AirStrafeAcceleration", value = tonumber(currentSettings.AirStrafeAcceleration), delay = math.random(1, 14)}
-    }
-    
-    for _, setting in ipairs(settings) do
-        if setting.value and tostring(setting.value) ~= "1500" and tostring(setting.value) ~= "1" and tostring(setting.value) ~= "187" then
-            task.spawn(function()
-                task.wait(setting.delay)
-                applyToTables(function(obj)
-                    obj[setting.field] = setting.value
-                end)
-            end)
-        end
-    end
-end
-
-local function isPlayerModelPresent()
-    local GameFolder = workspace:FindFirstChild("Game")
-    local PlayersFolder = GameFolder and GameFolder:FindFirstChild("Players")
-    return PlayersFolder and PlayersFolder:FindFirstChild(player.Name) ~= nil
-end
-
-local function syncSpeedInput(Value)
-    local val = tonumber(Value)
-    if val and val >= 1450 and val <= 100008888 then
-        currentSettings.Speed = tostring(val)
-        applyToTables(function(obj)
-            obj.Speed = val
-        end)
-    end
-end
-
-SpeedInput = MiscTab:AddInput("SpeedInput", {
-    Title = "Player Speed",
-    Default = currentSettings.Speed,
-    Placeholder = "Default 1500",
-    Numeric = true,
-    Finished = false,
-    Callback = syncSpeedInput
-})
-
-SpeedInput:OnChanged(syncSpeedInput)
-
-JumpPowerInput = MiscTab:AddInput("JumpPowerInput", {
-    Title = "Player Jump",
-    Default = "3.5",
-    Placeholder = "",
-    Numeric = true,
-    Finished = true,
-    Callback = function(Value)
-        if Value and tonumber(Value) then
-            JumpPowerValue = tonumber(Value)
-        end
-    end
-})
-
-JumpCapInput = MiscTab:AddInput("JumpCapInput", {
-    Title = "Player Jump Cap",
-    Default = currentSettings.JumpCap,
-    Placeholder = "Default 1",
-    Numeric = true,
-    Finished = false,
-    Callback = function(Value)
-        local val = tonumber(Value)
-        if val and val >= 0.1 and val <= 5088888 then
-            currentSettings.JumpCap = tostring(val)
-            applyToTables(function(obj)
-                obj.JumpCap = val
-            end)
-        end
-    end
-})
-
-local function syncStrafeInput(Value)
-    local val = tonumber(Value)
-    if val and val >= 1 and val <= 1000888888 then
-        currentSettings.AirStrafeAcceleration = tostring(val)
-        applyToTables(function(obj)
-            obj.AirStrafeAcceleration = val
-        end)
-    end
-end
-
-StrafeInput = MiscTab:AddInput("StrafeInput", {
-    Title = "Player Strafe Acceleration",
-    Default = currentSettings.AirStrafeAcceleration,
-    Placeholder = "Default 187",
-    Numeric = true,
-    Finished = false,
-    Callback = syncStrafeInput
-})
-
-StrafeInput:OnChanged(syncStrafeInput)
-
-local function syncApplyMethod(Value)
-    getgenv().ApplyMode = Value
-    local s = tonumber(currentSettings.Speed)
-    local j = tonumber(currentSettings.JumpCap)
-    local a = tonumber(currentSettings.AirStrafeAcceleration)
     applyToTables(function(obj)
-        if s then obj.Speed = s end
-        if j then obj.JumpCap = j end
-        if a then obj.AirStrafeAcceleration = a end
+        obj.Speed = value
     end)
 end
 
-ApplyMethodDropdown = MiscTab:AddDropdown("ApplyMethodDropdown", {
-    Title = "Select Apply Method",
-    Values = {"Not Optimized", "Optimized"},
-    Multi = false,
-    Default = getgenv().ApplyMode,
-    Callback = syncApplyMethod
-})
+local function applyJumpPower(value)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.JumpPower = value
+    end
+    applyToTables(function(obj)
+        obj.JumpHeight = value
+    end)
+end
 
-ApplyMethodDropdown:OnChanged(syncApplyMethod)
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ChangeSettingRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Data"):WaitForChild("ChangeSetting")
-local UpdatedEvent = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Client"):WaitForChild("Settings"):WaitForChild("Updated")
+local function applyJumpCap(value)
+    local char = LocalPlayer.Character
+    if char then
+        char:SetAttribute("JumpCap", value)
+    end
+    applyToTables(function(obj)
+        obj.JumpCap = value
+    end)
+end
 
-FovInput = MiscTab:AddInput("FovInput", {
-    Title = "Player FOV",
-    Default = "",
-    Numeric = true,
-    Finished = false,
-    Callback = function(Value)
-        local num = tonumber(Value)
-        if num then
-            ChangeSettingRemote:InvokeServer(2, num)
-            UpdatedEvent:Fire(2, num)
+local function applyStrafe(value)
+    local char = LocalPlayer.Character
+    if char then
+        char:SetAttribute("AirStrafeAcceleration", value)
+    end
+    applyToTables(function(obj)
+        obj.AirStrafeAcceleration = value
+    end)
+end
+
+local function applyFOV(value)
+    local camera = workspace.CurrentCamera
+    if camera then
+        camera.FieldOfView = value
+    end
+    local ChangeSettingRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Data") and ReplicatedStorage.Events.Data:FindFirstChild("ChangeSetting")
+    local UpdatedEvent = ReplicatedStorage:FindFirstChild("Modules") and ReplicatedStorage.Modules:FindFirstChild("Client") and ReplicatedStorage.Modules.Client:FindFirstChild("Settings") and ReplicatedStorage.Modules.Client.Settings:FindFirstChild("Updated")
+    if ChangeSettingRemote then
+        pcall(function()
+            ChangeSettingRemote:InvokeServer(2, value)
+        end)
+    end
+    if UpdatedEvent then
+        pcall(function()
+            UpdatedEvent:Fire(2, value)
+        end)
+    end
+end
+
+local function createAdjustmentsUI()
+    local Fluent = _G.Fluent
+    if not Fluent then return end
+    local MiscTab = _G.MiscTab
+    if not MiscTab then return end
+    
+    MiscTab:AddInput("SpeedInput", {
+        Title = "Player Speed",
+        Default = "1500",
+        Placeholder = "Default 1500",
+        Numeric = true,
+        Finished = false,
+        Callback = function(Value)
+            local val = tonumber(Value)
+            if val and val >= 1 and val <= 100000000 then
+                currentSettings.Speed = val
+                applySpeed(val)
+            end
         end
-    end
-})
-
-JumpPowerValue = 3.5
-MaxJumpsValue = math.huge
-
-CurrentJumpCount = 0
-JumpHumanoid = nil
-JumpRootPart = nil
-
-Players.LocalPlayer.CharacterAdded:Connect(function(newChar)
-    task.wait(0.5)
-    JumpHumanoid = newChar:FindFirstChild("Humanoid")
-    JumpRootPart = newChar:FindFirstChild("HumanoidRootPart")
-    if JumpHumanoid and JumpRootPart then
-        CurrentJumpCount = 0
-        JumpHumanoid.StateChanged:Connect(function(oldState, newState)
-            if newState == Enum.HumanoidStateType.Landed then
-                CurrentJumpCount = 0
+    })
+    
+    MiscTab:AddInput("JumpPowerInput", {
+        Title = "Player Jump",
+        Default = "3.5",
+        Placeholder = "Default 3.5",
+        Numeric = true,
+        Finished = true,
+        Callback = function(Value)
+            local val = tonumber(Value)
+            if val and val >= 0.1 and val <= 100000000 then
+                currentSettings.JumpHeight = val
+                applyJumpPower(val)
             end
-        end)
-        JumpHumanoid.Jumping:Connect(function(isJumping)
-            if isJumping and CurrentJumpCount < MaxJumpsValue then
-                CurrentJumpCount = CurrentJumpCount + 1
-                JumpHumanoid.JumpHeight = JumpPowerValue
-                if CurrentJumpCount > 1 and JumpRootPart then
-                    JumpRootPart:ApplyImpulse(Vector3.new(0, JumpPowerValue * JumpRootPart.Mass, 0))
-                end
+        end
+    })
+    
+    MiscTab:AddInput("JumpCapInput", {
+        Title = "Player Jump Cap",
+        Default = "1",
+        Placeholder = "Default 1",
+        Numeric = true,
+        Finished = false,
+        Callback = function(Value)
+            local val = tonumber(Value)
+            if val and val >= 0.1 and val <= 100000000 then
+                currentSettings.JumpCap = val
+                applyJumpCap(val)
             end
-        end)
-    end
-end)
+        end
+    })
+    
+    MiscTab:AddInput("StrafeInput", {
+        Title = "Player Strafe Acceleration",
+        Default = "187",
+        Placeholder = "Default 187",
+        Numeric = true,
+        Finished = false,
+        Callback = function(Value)
+            local val = tonumber(Value)
+            if val and val >= 1 and val <= 100000000 then
+                currentSettings.AirStrafeAcceleration = val
+                applyStrafe(val)
+            end
+        end
+    })
+    
+    MiscTab:AddInput("FovInput", {
+        Title = "Player FOV",
+        Default = "70",
+        Numeric = true,
+        Finished = false,
+        Callback = function(Value)
+            local val = tonumber(Value)
+            if val and val >= 10 and val <= 120 then
+                currentSettings.FOV = val
+                applyFOV(val)
+            end
+        end
+    })
+    
+    MiscTab:AddDropdown("ApplyMethodDropdown", {
+        Title = "Select Apply Method",
+        Values = {"Not Optimized", "Optimized"},
+        Multi = false,
+        Default = getgenv().ApplyMode,
+        Callback = function(Value)
+            getgenv().ApplyMode = Value
+            applySpeed(currentSettings.Speed)
+            applyJumpPower(currentSettings.JumpHeight)
+            applyJumpCap(currentSettings.JumpCap)
+            applyStrafe(currentSettings.AirStrafeAcceleration)
+        end
+    })
+end
 
-if Players.LocalPlayer.Character then
-    task.spawn(function()
-        task.wait(0.5)
-        JumpHumanoid = Players.LocalPlayer.Character:FindFirstChild("Humanoid")
-        JumpRootPart = Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if JumpHumanoid and JumpRootPart then
-            CurrentJumpCount = 0
-            JumpHumanoid.StateChanged:Connect(function(oldState, newState)
-                if newState == Enum.HumanoidStateType.Landed then
-                    CurrentJumpCount = 0
-                end
-            end)
-            JumpHumanoid.Jumping:Connect(function(isJumping)
-                if isJumping and CurrentJumpCount < MaxJumpsValue then
-                    CurrentJumpCount = CurrentJumpCount + 1
-                    JumpHumanoid.JumpHeight = JumpPowerValue
-                    if CurrentJumpCount > 1 and JumpRootPart then
-                        JumpRootPart:ApplyImpulse(Vector3.new(0, JumpPowerValue * JumpRootPart.Mass, 0))
-                    end
-                end
-            end)
+local function startAutoUpdate()
+    spawn(function()
+        while task.wait(0.5) do
+            applySpeed(currentSettings.Speed)
+            applyJumpPower(currentSettings.JumpHeight)
+            applyJumpCap(currentSettings.JumpCap)
+            applyStrafe(currentSettings.AirStrafeAcceleration)
+            applyFOV(currentSettings.FOV)
         end
     end)
 end
-LocalPlayer.CharacterAdded:Connect(function(newChar)
-    character = newChar
+
+task.wait(2)
+
+createAdjustmentsUI()
+startAutoUpdate()
+
+LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
-    humanoid = character:WaitForChild("Humanoid")
-    rootPart = character:WaitForChild("HumanoidRootPart")
+    applySpeed(currentSettings.Speed)
+    applyJumpPower(currentSettings.JumpHeight)
+    applyJumpCap(currentSettings.JumpCap)
+    applyStrafe(currentSettings.AirStrafeAcceleration)
+    applyFOV(currentSettings.FOV)
 end)
+
+task.wait(0.5)
+applySpeed(1500)
+applyJumpPower(3.5)
+applyJumpCap(1)
+applyStrafe(187)
+applyFOV(70)
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
 
