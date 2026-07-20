@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 7",
+    Title = "Draconic Hub 8",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2974,6 +2974,10 @@ end)
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
+-- ============================================
+-- PLAYER ADJUSTMENTS (путь workspace.Rigs.ТвоёИмя)
+-- ============================================
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
@@ -2984,31 +2988,41 @@ local currentSettings = {
     Strafe = 187
 }
 
-getgenv().ApplyMode = "Not Optimized"
+local function getCharacter()
+    local rigsFolder = workspace:FindFirstChild("Rigs")
+    if not rigsFolder then return nil end
+    return rigsFolder:FindFirstChild(LocalPlayer.Name)
+end
 
 local function applySpeed(value)
-    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = value
+    local char = getCharacter()
+    if char then
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = value
+        end
     end
 end
 
 local function applyJumpPower(value)
-    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.JumpPower = value
+    local char = getCharacter()
+    if char then
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = value
+        end
     end
 end
 
 local function applyJumpCap(value)
-    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
+    local char = getCharacter()
     if char then
         char:SetAttribute("JumpCap", value)
     end
 end
 
 local function applyStrafe(value)
-    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
+    local char = getCharacter()
     if char then
         char:SetAttribute("AirStrafeAcceleration", value)
     end
@@ -3093,7 +3107,7 @@ MiscTab:AddDropdown("ApplyMethodDropdown", {
 -- ========== АВТО-ОБНОВЛЕНИЕ ==========
 spawn(function()
     while task.wait(0.5) do
-        local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
+        local char = getCharacter()
         if char then
             local humanoid = char:FindFirstChild("Humanoid")
             if humanoid then
