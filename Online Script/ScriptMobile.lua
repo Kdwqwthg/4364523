@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 9",
+    Title = "Draconic Hub 1",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2975,7 +2975,7 @@ MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
 -- ============================================
--- PLAYER ADJUSTMENTS (по модулю, без фризов, мгновенно)
+-- PLAYER ADJUSTMENTS (мгновенное применение без респавна)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -2991,7 +2991,6 @@ local currentSettings = {
 
 local BaseStatsModule = nil
 
--- Находим модуль BaseStats (один раз при старте)
 for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
     if obj:IsA("ModuleScript") and obj.Name == "BaseStats" then
         local success, module = pcall(function() return require(obj) end)
@@ -3002,7 +3001,6 @@ for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
     end
 end
 
--- Если не найден, ищем через getgc (один раз)
 if not BaseStatsModule then
     for _, obj in ipairs(getgc(true)) do
         if type(obj) == "table" and rawget(obj, "Speed") ~= nil and rawget(obj, "JumpCap") ~= nil then
@@ -3012,7 +3010,6 @@ if not BaseStatsModule then
     end
 end
 
--- Применение (без циклов, только при изменении)
 local function applyAll()
     if BaseStatsModule then
         BaseStatsModule.Speed = currentSettings.Speed
@@ -3095,16 +3092,12 @@ MiscTab:AddInput("StrafeInput", {
     end
 })
 
-MiscTab:AddDropdown("ApplyMethodDropdown", {
-    Title = "Select Apply Method",
-    Values = {"Not Optimized", "Optimized"},
-    Multi = false,
-    Default = getgenv().ApplyMode,
-    Callback = function(Value)
-        getgenv().ApplyMode = Value
+-- ========== ПОСТОЯННОЕ ПРИМЕНЕНИЕ ==========
+spawn(function()
+    while task.wait(0.1) do
         applyAll()
     end
-})
+end)
 
 -- ========== ПРИМЕНЕНИЕ ПРИ РЕСПАВНЕ ==========
 LocalPlayer.CharacterAdded:Connect(function(char)
