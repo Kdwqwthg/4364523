@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 1",
+    Title = "Draconic Hub 2",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2975,7 +2975,7 @@ MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
 -- ============================================
--- PLAYER ADJUSTMENTS (мгновенное применение без респавна)
+-- PLAYER ADJUSTMENTS (путь workspace.Players)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -3018,7 +3018,7 @@ local function applyAll()
         BaseStatsModule.AirStrafeAcceleration = currentSettings.Strafe
     end
     
-    local char = workspace:FindFirstChild("Rigs") and workspace.Rigs:FindFirstChild(LocalPlayer.Name)
+    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
     if char then
         local humanoid = char:FindFirstChild("Humanoid")
         if humanoid then
