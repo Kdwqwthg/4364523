@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 8",
+    Title = "Draconic Hub 9",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2975,11 +2975,12 @@ MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
 -- ============================================
--- PLAYER ADJUSTMENTS (путь workspace.Rigs.ТвоёИмя)
+-- PLAYER ADJUSTMENTS (по модулю, без фризов, мгновенно)
 -- ============================================
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local currentSettings = {
     Speed = 1500,
@@ -2988,43 +2989,47 @@ local currentSettings = {
     Strafe = 187
 }
 
-local function getCharacter()
-    local rigsFolder = workspace:FindFirstChild("Rigs")
-    if not rigsFolder then return nil end
-    return rigsFolder:FindFirstChild(LocalPlayer.Name)
-end
+local BaseStatsModule = nil
 
-local function applySpeed(value)
-    local char = getCharacter()
-    if char then
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = value
+-- Находим модуль BaseStats (один раз при старте)
+for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+    if obj:IsA("ModuleScript") and obj.Name == "BaseStats" then
+        local success, module = pcall(function() return require(obj) end)
+        if success and module then
+            BaseStatsModule = module
+            break
         end
     end
 end
 
-local function applyJumpPower(value)
-    local char = getCharacter()
-    if char then
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.JumpPower = value
+-- Если не найден, ищем через getgc (один раз)
+if not BaseStatsModule then
+    for _, obj in ipairs(getgc(true)) do
+        if type(obj) == "table" and rawget(obj, "Speed") ~= nil and rawget(obj, "JumpCap") ~= nil then
+            BaseStatsModule = obj
+            break
         end
     end
 end
 
-local function applyJumpCap(value)
-    local char = getCharacter()
-    if char then
-        char:SetAttribute("JumpCap", value)
+-- Применение (без циклов, только при изменении)
+local function applyAll()
+    if BaseStatsModule then
+        BaseStatsModule.Speed = currentSettings.Speed
+        BaseStatsModule.JumpHeight = currentSettings.JumpPower
+        BaseStatsModule.JumpCap = currentSettings.JumpCap
+        BaseStatsModule.AirStrafeAcceleration = currentSettings.Strafe
     end
-end
-
-local function applyStrafe(value)
-    local char = getCharacter()
+    
+    local char = workspace:FindFirstChild("Rigs") and workspace.Rigs:FindFirstChild(LocalPlayer.Name)
     if char then
-        char:SetAttribute("AirStrafeAcceleration", value)
+        local humanoid = char:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = currentSettings.Speed
+            humanoid.JumpPower = currentSettings.JumpPower
+        end
+        char:SetAttribute("JumpCap", currentSettings.JumpCap)
+        char:SetAttribute("AirStrafeAcceleration", currentSettings.Strafe)
     end
 end
 
@@ -3040,7 +3045,7 @@ MiscTab:AddInput("SpeedInput", {
         local val = tonumber(Value)
         if val and val >= 1 and val <= 100000000 then
             currentSettings.Speed = val
-            applySpeed(val)
+            applyAll()
         end
     end
 })
@@ -3055,7 +3060,7 @@ MiscTab:AddInput("JumpPowerInput", {
         local val = tonumber(Value)
         if val and val >= 0.1 and val <= 100000000 then
             currentSettings.JumpPower = val
-            applyJumpPower(val)
+            applyAll()
         end
     end
 })
@@ -3070,7 +3075,7 @@ MiscTab:AddInput("JumpCapInput", {
         local val = tonumber(Value)
         if val and val >= 0.1 and val <= 100000000 then
             currentSettings.JumpCap = val
-            applyJumpCap(val)
+            applyAll()
         end
     end
 })
@@ -3085,7 +3090,7 @@ MiscTab:AddInput("StrafeInput", {
         local val = tonumber(Value)
         if val and val >= 1 and val <= 100000000 then
             currentSettings.Strafe = val
-            applyStrafe(val)
+            applyAll()
         end
     end
 })
@@ -3097,52 +3102,19 @@ MiscTab:AddDropdown("ApplyMethodDropdown", {
     Default = getgenv().ApplyMode,
     Callback = function(Value)
         getgenv().ApplyMode = Value
-        applySpeed(currentSettings.Speed)
-        applyJumpPower(currentSettings.JumpPower)
-        applyJumpCap(currentSettings.JumpCap)
-        applyStrafe(currentSettings.Strafe)
+        applyAll()
     end
 })
-
--- ========== АВТО-ОБНОВЛЕНИЕ ==========
-spawn(function()
-    while task.wait(0.5) do
-        local char = getCharacter()
-        if char then
-            local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then
-                if humanoid.WalkSpeed ~= currentSettings.Speed then
-                    humanoid.WalkSpeed = currentSettings.Speed
-                end
-                if humanoid.JumpPower ~= currentSettings.JumpPower then
-                    humanoid.JumpPower = currentSettings.JumpPower
-                end
-            end
-            if char:GetAttribute("JumpCap") ~= currentSettings.JumpCap then
-                char:SetAttribute("JumpCap", currentSettings.JumpCap)
-            end
-            if char:GetAttribute("AirStrafeAcceleration") ~= currentSettings.Strafe then
-                char:SetAttribute("AirStrafeAcceleration", currentSettings.Strafe)
-            end
-        end
-    end
-end)
 
 -- ========== ПРИМЕНЕНИЕ ПРИ РЕСПАВНЕ ==========
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
-    applySpeed(currentSettings.Speed)
-    applyJumpPower(currentSettings.JumpPower)
-    applyJumpCap(currentSettings.JumpCap)
-    applyStrafe(currentSettings.Strafe)
+    applyAll()
 end)
 
 -- ========== ДЕФОЛТНЫЕ ЗНАЧЕНИЯ ==========
 task.wait(0.5)
-applySpeed(1500)
-applyJumpPower(3.5)
-applyJumpCap(1)
-applyStrafe(187)
+applyAll()
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
 
