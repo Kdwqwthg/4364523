@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 6",
+    Title = "Draconic Hub 7",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2974,10 +2974,6 @@ end)
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
--- ============================================
--- PLAYER ADJUSTMENTS (как в старом коде, только при изменении)
--- ============================================
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
@@ -2988,29 +2984,31 @@ local currentSettings = {
     Strafe = 187
 }
 
+getgenv().ApplyMode = "Not Optimized"
+
 local function applySpeed(value)
-    local char = LocalPlayer.Character
+    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.WalkSpeed = value
     end
 end
 
 local function applyJumpPower(value)
-    local char = LocalPlayer.Character
+    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.JumpPower = value
     end
 end
 
 local function applyJumpCap(value)
-    local char = LocalPlayer.Character
+    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
     if char then
         char:SetAttribute("JumpCap", value)
     end
 end
 
 local function applyStrafe(value)
-    local char = LocalPlayer.Character
+    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
     if char then
         char:SetAttribute("AirStrafeAcceleration", value)
     end
@@ -3077,6 +3075,44 @@ MiscTab:AddInput("StrafeInput", {
         end
     end
 })
+
+MiscTab:AddDropdown("ApplyMethodDropdown", {
+    Title = "Select Apply Method",
+    Values = {"Not Optimized", "Optimized"},
+    Multi = false,
+    Default = getgenv().ApplyMode,
+    Callback = function(Value)
+        getgenv().ApplyMode = Value
+        applySpeed(currentSettings.Speed)
+        applyJumpPower(currentSettings.JumpPower)
+        applyJumpCap(currentSettings.JumpCap)
+        applyStrafe(currentSettings.Strafe)
+    end
+})
+
+-- ========== АВТО-ОБНОВЛЕНИЕ ==========
+spawn(function()
+    while task.wait(0.5) do
+        local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                if humanoid.WalkSpeed ~= currentSettings.Speed then
+                    humanoid.WalkSpeed = currentSettings.Speed
+                end
+                if humanoid.JumpPower ~= currentSettings.JumpPower then
+                    humanoid.JumpPower = currentSettings.JumpPower
+                end
+            end
+            if char:GetAttribute("JumpCap") ~= currentSettings.JumpCap then
+                char:SetAttribute("JumpCap", currentSettings.JumpCap)
+            end
+            if char:GetAttribute("AirStrafeAcceleration") ~= currentSettings.Strafe then
+                char:SetAttribute("AirStrafeAcceleration", currentSettings.Strafe)
+            end
+        end
+    end
+end)
 
 -- ========== ПРИМЕНЕНИЕ ПРИ РЕСПАВНЕ ==========
 LocalPlayer.CharacterAdded:Connect(function(char)
