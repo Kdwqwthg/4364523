@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 1",
+    Title = "Draconic Hub 2",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3108,23 +3108,21 @@ local function applyFOV(value)
     end
 end
 
-local MiscTab = nil
-local Fluent = nil
-
-local function createAdjustmentsUI()
-    Fluent = _G.Fluent
-    if not Fluent then return false end
+local function createUI()
+    local Fluent = _G.Fluent
+    if not Fluent then return end
     
     local Window = _G.Window
-    if not Window then return false end
+    if not Window then return end
     
+    local MiscTab = Window.Tabs["Misc"]
     if not MiscTab then
         MiscTab = Window:AddTab({ Title = "Misc", Icon = "solar/settings-bold", Favoriteable = true })
     end
     
-    if not MiscTab then return false end
+    if not MiscTab then return end
     
-    local section = MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
+    MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
     
     MiscTab:AddInput("SpeedInput", {
         Title = "Player Speed",
@@ -3213,8 +3211,6 @@ local function createAdjustmentsUI()
             applyStrafe(currentSettings.AirStrafeAcceleration)
         end
     })
-    
-    return true
 end
 
 local function startAutoUpdate()
@@ -3229,41 +3225,24 @@ local function startAutoUpdate()
     end)
 end
 
-local function waitForFluent()
-    local attempts = 0
-    while attempts < 50 do
-        if _G.Fluent and _G.Window then
-            return true
-        end
-        task.wait(0.1)
-        attempts = attempts + 1
-    end
-    return false
-end
-
 task.spawn(function()
+    task.wait(2)
+    pcall(createUI)
+    startAutoUpdate()
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        applySpeed(currentSettings.Speed)
+        applyJumpPower(currentSettings.JumpHeight)
+        applyJumpCap(currentSettings.JumpCap)
+        applyStrafe(currentSettings.AirStrafeAcceleration)
+        applyFOV(currentSettings.FOV)
+    end)
     task.wait(0.5)
-    
-    if waitForFluent() then
-        local success = pcall(createAdjustmentsUI)
-        if success then
-            startAutoUpdate()
-            LocalPlayer.CharacterAdded:Connect(function(char)
-                task.wait(0.5)
-                applySpeed(currentSettings.Speed)
-                applyJumpPower(currentSettings.JumpHeight)
-                applyJumpCap(currentSettings.JumpCap)
-                applyStrafe(currentSettings.AirStrafeAcceleration)
-                applyFOV(currentSettings.FOV)
-            end)
-            task.wait(0.5)
-            applySpeed(1500)
-            applyJumpPower(3.5)
-            applyJumpCap(1)
-            applyStrafe(187)
-            applyFOV(70)
-        end
-    end
+    applySpeed(1500)
+    applyJumpPower(3.5)
+    applyJumpCap(1)
+    applyStrafe(187)
+    applyFOV(70)
 end)
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
