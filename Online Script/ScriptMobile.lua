@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 3",
+    Title = "Draconic Hub 4",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2975,20 +2975,18 @@ MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
 -- ============================================
--- PLAYER ADJUSTMENTS (Misc Tab)
+-- PLAYER ADJUSTMENTS (вставляется сразу после MiscTab:AddSection)
 -- ============================================
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local currentSettings = {
     Speed = 1500,
     JumpHeight = 3.5,
     JumpCap = 1,
-    AirStrafeAcceleration = 187,
-    FOV = 70
+    AirStrafeAcceleration = 187
 }
 
 getgenv().ApplyMode = "Not Optimized"
@@ -3093,120 +3091,83 @@ local function applyStrafe(value)
     end)
 end
 
-local function applyFOV(value)
-    local camera = workspace.CurrentCamera
-    if camera then
-        camera.FieldOfView = value
-    end
-    local ChangeSettingRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Data") and ReplicatedStorage.Events.Data:FindFirstChild("ChangeSetting")
-    local UpdatedEvent = ReplicatedStorage:FindFirstChild("Modules") and ReplicatedStorage.Modules:FindFirstChild("Client") and ReplicatedStorage.Modules.Client:FindFirstChild("Settings") and ReplicatedStorage.Modules.Client.Settings:FindFirstChild("Updated")
-    if ChangeSettingRemote then
-        pcall(function()
-            ChangeSettingRemote:InvokeServer(2, value)
-        end)
-    end
-    if UpdatedEvent then
-        pcall(function()
-            UpdatedEvent:Fire(2, value)
-        end)
-    end
-end
+-- ========== ОКОШКИ ==========
 
--- Создание UI в MiscTab
-local MiscTab = Window:FindTab("Misc")
-if MiscTab then
-    MiscTab:AddSection("Player Adjustments")
-    
-    SpeedInput = MiscTab:AddInput("SpeedInput", {
-        Title = "Player Speed",
-        Default = "1500",
-        Placeholder = "Default 1500",
-        Numeric = true,
-        Finished = false,
-        Callback = function(Value)
-            local val = tonumber(Value)
-            if val and val >= 1 and val <= 100000000 then
-                currentSettings.Speed = val
-                applySpeed(val)
-            end
+MiscTab:AddInput("SpeedInput", {
+    Title = "Player Speed",
+    Default = "1500",
+    Placeholder = "Default 1500",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 1 and val <= 100000000 then
+            currentSettings.Speed = val
+            applySpeed(val)
         end
-    })
-    
-    JumpPowerInput = MiscTab:AddInput("JumpPowerInput", {
-        Title = "Player Jump Power",
-        Default = "3.5",
-        Placeholder = "Default 3.5",
-        Numeric = true,
-        Finished = true,
-        Callback = function(Value)
-            local val = tonumber(Value)
-            if val and val >= 0.1 and val <= 100000000 then
-                currentSettings.JumpHeight = val
-                applyJumpPower(val)
-            end
-        end
-    })
-    
-    JumpCapInput = MiscTab:AddInput("JumpCapInput", {
-        Title = "Player Jump Cap",
-        Default = "1",
-        Placeholder = "Default 1",
-        Numeric = true,
-        Finished = false,
-        Callback = function(Value)
-            local val = tonumber(Value)
-            if val and val >= 0.1 and val <= 100000000 then
-                currentSettings.JumpCap = val
-                applyJumpCap(val)
-            end
-        end
-    })
-    
-    StrafeInput = MiscTab:AddInput("StrafeInput", {
-        Title = "Player Strafe Acceleration",
-        Default = "187",
-        Placeholder = "Default 187",
-        Numeric = true,
-        Finished = false,
-        Callback = function(Value)
-            local val = tonumber(Value)
-            if val and val >= 1 and val <= 100000000 then
-                currentSettings.AirStrafeAcceleration = val
-                applyStrafe(val)
-            end
-        end
-    })
-    
-    FovInput = MiscTab:AddInput("FovInput", {
-        Title = "Player FOV",
-        Default = "70",
-        Numeric = true,
-        Finished = false,
-        Callback = function(Value)
-            local val = tonumber(Value)
-            if val and val >= 10 and val <= 120 then
-                currentSettings.FOV = val
-                applyFOV(val)
-            end
-        end
-    })
-    
-    ApplyMethodDropdown = MiscTab:AddDropdown("ApplyMethodDropdown", {
-        Title = "Select Apply Method",
-        Values = {"Not Optimized", "Optimized"},
-        Multi = false,
-        Default = getgenv().ApplyMode,
-        Callback = function(Value)
-            getgenv().ApplyMode = Value
-            applySpeed(currentSettings.Speed)
-            applyJumpPower(currentSettings.JumpHeight)
-            applyJumpCap(currentSettings.JumpCap)
-            applyStrafe(currentSettings.AirStrafeAcceleration)
-        end
-    })
-end
+    end
+})
 
--- Авто-обновление настроек
+MiscTab:AddInput("JumpPowerInput", {
+    Title = "Player Jump",
+    Default = "3.5",
+    Placeholder = "Default 3.5",
+    Numeric = true,
+    Finished = true,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 0.1 and val <= 100000000 then
+            currentSettings.JumpHeight = val
+            applyJumpPower(val)
+        end
+    end
+})
+
+MiscTab:AddInput("JumpCapInput", {
+    Title = "Player Jump Cap",
+    Default = "1",
+    Placeholder = "Default 1",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 0.1 and val <= 100000000 then
+            currentSettings.JumpCap = val
+            applyJumpCap(val)
+        end
+    end
+})
+
+MiscTab:AddInput("StrafeInput", {
+    Title = "Player Strafe Acceleration",
+    Default = "187",
+    Placeholder = "Default 187",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 1 and val <= 100000000 then
+            currentSettings.AirStrafeAcceleration = val
+            applyStrafe(val)
+        end
+    end
+})
+
+MiscTab:AddDropdown("ApplyMethodDropdown", {
+    Title = "Select Apply Method",
+    Values = {"Not Optimized", "Optimized"},
+    Multi = false,
+    Default = getgenv().ApplyMode,
+    Callback = function(Value)
+        getgenv().ApplyMode = Value
+        applySpeed(currentSettings.Speed)
+        applyJumpPower(currentSettings.JumpHeight)
+        applyJumpCap(currentSettings.JumpCap)
+        applyStrafe(currentSettings.AirStrafeAcceleration)
+    end
+})
+
+-- ========== АВТО-ОБНОВЛЕНИЕ ==========
 local function startAutoUpdate()
     spawn(function()
         while task.wait(0.5) do
@@ -3214,31 +3175,25 @@ local function startAutoUpdate()
             applyJumpPower(currentSettings.JumpHeight)
             applyJumpCap(currentSettings.JumpCap)
             applyStrafe(currentSettings.AirStrafeAcceleration)
-            applyFOV(currentSettings.FOV)
         end
     end)
 end
 
-task.wait(2)
 startAutoUpdate()
 
--- Применение при респавне
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
     applySpeed(currentSettings.Speed)
     applyJumpPower(currentSettings.JumpHeight)
     applyJumpCap(currentSettings.JumpCap)
     applyStrafe(currentSettings.AirStrafeAcceleration)
-    applyFOV(currentSettings.FOV)
 end)
 
--- Дефолтные значения
 task.wait(0.5)
 applySpeed(1500)
 applyJumpPower(3.5)
 applyJumpCap(1)
 applyStrafe(187)
-applyFOV(70)
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
 
