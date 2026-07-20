@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 5",
+    Title = "Draconic Hub 6",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2974,6 +2974,125 @@ end)
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
+-- ============================================
+-- PLAYER ADJUSTMENTS (как в старом коде, только при изменении)
+-- ============================================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local currentSettings = {
+    Speed = 1500,
+    JumpPower = 3.5,
+    JumpCap = 1,
+    Strafe = 187
+}
+
+local function applySpeed(value)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = value
+    end
+end
+
+local function applyJumpPower(value)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.JumpPower = value
+    end
+end
+
+local function applyJumpCap(value)
+    local char = LocalPlayer.Character
+    if char then
+        char:SetAttribute("JumpCap", value)
+    end
+end
+
+local function applyStrafe(value)
+    local char = LocalPlayer.Character
+    if char then
+        char:SetAttribute("AirStrafeAcceleration", value)
+    end
+end
+
+-- ========== ОКОШКИ ==========
+
+MiscTab:AddInput("SpeedInput", {
+    Title = "Player Speed",
+    Default = "1500",
+    Placeholder = "Default 1500",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 1 and val <= 100000000 then
+            currentSettings.Speed = val
+            applySpeed(val)
+        end
+    end
+})
+
+MiscTab:AddInput("JumpPowerInput", {
+    Title = "Player Jump",
+    Default = "3.5",
+    Placeholder = "Default 3.5",
+    Numeric = true,
+    Finished = true,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 0.1 and val <= 100000000 then
+            currentSettings.JumpPower = val
+            applyJumpPower(val)
+        end
+    end
+})
+
+MiscTab:AddInput("JumpCapInput", {
+    Title = "Player Jump Cap",
+    Default = "1",
+    Placeholder = "Default 1",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 0.1 and val <= 100000000 then
+            currentSettings.JumpCap = val
+            applyJumpCap(val)
+        end
+    end
+})
+
+MiscTab:AddInput("StrafeInput", {
+    Title = "Player Strafe Acceleration",
+    Default = "187",
+    Placeholder = "Default 187",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local val = tonumber(Value)
+        if val and val >= 1 and val <= 100000000 then
+            currentSettings.Strafe = val
+            applyStrafe(val)
+        end
+    end
+})
+
+-- ========== ПРИМЕНЕНИЕ ПРИ РЕСПАВНЕ ==========
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    applySpeed(currentSettings.Speed)
+    applyJumpPower(currentSettings.JumpPower)
+    applyJumpCap(currentSettings.JumpCap)
+    applyStrafe(currentSettings.Strafe)
+end)
+
+-- ========== ДЕФОЛТНЫЕ ЗНАЧЕНИЯ ==========
+task.wait(0.5)
+applySpeed(1500)
+applyJumpPower(3.5)
+applyJumpCap(1)
+applyStrafe(187)
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
 
