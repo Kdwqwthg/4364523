@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 2",
+    Title = "Draconic Hub 3",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2975,7 +2975,7 @@ MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
 -- ============================================
--- PLAYER ADJUSTMENTS (путь workspace.Players)
+-- PLAYER ADJUSTMENTS (по модулям MoveStats)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -2989,35 +2989,25 @@ local currentSettings = {
     Strafe = 187
 }
 
-local BaseStatsModule = nil
+local MoveStatsRef = nil
 
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("ModuleScript") and obj.Name == "BaseStats" then
-        local success, module = pcall(function() return require(obj) end)
-        if success and module then
-            BaseStatsModule = module
-            break
-        end
-    end
-end
-
-if not BaseStatsModule then
+-- Находим MoveStats в памяти
+local function findMoveStats()
     for _, obj in ipairs(getgc(true)) do
-        if type(obj) == "table" and rawget(obj, "Speed") ~= nil and rawget(obj, "JumpCap") ~= nil then
-            BaseStatsModule = obj
-            break
+        if type(obj) == "table" then
+            local ok, check = pcall(function()
+                return rawget(obj, "MoveStats") ~= nil and rawget(obj, "SpeedChanges") ~= nil
+            end)
+            if ok and check then
+                return obj
+            end
         end
     end
+    return nil
 end
 
+-- Применение мгновенно
 local function applyAll()
-    if BaseStatsModule then
-        BaseStatsModule.Speed = currentSettings.Speed
-        BaseStatsModule.JumpHeight = currentSettings.JumpPower
-        BaseStatsModule.JumpCap = currentSettings.JumpCap
-        BaseStatsModule.AirStrafeAcceleration = currentSettings.Strafe
-    end
-    
     local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
     if char then
         local humanoid = char:FindFirstChild("Humanoid")
@@ -3027,6 +3017,19 @@ local function applyAll()
         end
         char:SetAttribute("JumpCap", currentSettings.JumpCap)
         char:SetAttribute("AirStrafeAcceleration", currentSettings.Strafe)
+    end
+    
+    -- Ищем и меняем MoveStats
+    if not MoveStatsRef then
+        MoveStatsRef = findMoveStats()
+    end
+    
+    if MoveStatsRef and MoveStatsRef.MoveStats then
+        MoveStatsRef.MoveStats.Speed = currentSettings.Speed
+        MoveStatsRef.MoveStats.JumpHeight = currentSettings.JumpPower
+        MoveStatsRef.MoveStats.JumpCap = currentSettings.JumpCap
+        MoveStatsRef.MoveStats.AirStrafeAcceleration = currentSettings.Strafe
+        MoveStatsRef.MoveStats.BaseSpeed = currentSettings.Speed
     end
 end
 
@@ -3092,7 +3095,7 @@ MiscTab:AddInput("StrafeInput", {
     end
 })
 
--- ========== ПОСТОЯННОЕ ПРИМЕНЕНИЕ ==========
+-- ========== ПОСТОЯННОЕ ОБНОВЛЕНИЕ ==========
 spawn(function()
     while task.wait(0.1) do
         applyAll()
@@ -3102,6 +3105,7 @@ end)
 -- ========== ПРИМЕНЕНИЕ ПРИ РЕСПАВНЕ ==========
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
+    MoveStatsRef = nil
     applyAll()
 end)
 
