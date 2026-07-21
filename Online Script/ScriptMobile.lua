@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 6",
+    Title = "Draconic Hub 7",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3149,7 +3149,7 @@ local player = game:GetService("Players").LocalPlayer
 local function updateBounce()
     if not BounceToggle.Value then return end
     
-    local gamePlayers = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
+    local gamePlayers = workspace.Game:FindFirstChild("Players")
     if not gamePlayers then return end
     
     local playerModel = gamePlayers:FindFirstChild(player.Name)
@@ -3357,50 +3357,48 @@ local function createGradientButton(parent, position, size, text, onClickCallbac
     return button, clicker, stroke
 end
 
-local InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
-    Title = "Instant Revive",
-    Default = false
-})
+-- ============================================
+-- INSTANT REVIVE (без проверки эмоций)
+-- ============================================
 
-local ReviveWhileEmoteToggle = MiscTab:AddToggle("ReviveWhileEmoteToggle", {
-    Title = "Instant Revive While Emoting",
-    Default = false
-})
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ReviveDelaySlider = MiscTab:AddSlider("ReviveDelaySlider", {
-    Title = "Revive Delay",
-    Min = 0,
-    Max = 1,
-    Default = 0.15,
-    Rounding = 2,
-    Callback = function(value)
-        getgenv().InstantReviveDelay = value
-    end
-})
 getgenv().InstantReviveDelay = 0.15
 
 local InstantReviveModule = (function()
-    local Players = game:GetService("Players")
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local LocalPlayer = Players.LocalPlayer
-
     local reviveRange = 10
     local loopDelay = getgenv().InstantReviveDelay or 0.15
 
     local enabled = false
     local handle = nil
-    local stateConnection = nil
-    local isCurrentlyEmoting = false
 
-    local interactEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Character"):WaitForChild("Interact")
+    local InteractEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
 
-    local function updateEmoteStatus()
-        if not LocalPlayer.Character then
-            isCurrentlyEmoting = false
-            return
+    local function getPlayerTag(pl)
+        if not pl then return nil end
+        local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(pl.Name)
+        if char then
+            return char:GetAttribute("Tag")
         end
-        local state = LocalPlayer.Character:GetAttribute("State")
-        isCurrentlyEmoting = state and string.find(state, "Emoting")
+        return nil
+    end
+
+    local function getPlayerByTag(tag)
+        if not tag then return nil end
+        local playersFolder = workspace:FindFirstChild("Players")
+        if not playersFolder then return nil end
+        for _, char in ipairs(playersFolder:GetChildren()) do
+            if char:GetAttribute("Tag") == tag then
+                for _, pl in ipairs(Players:GetPlayers()) do
+                    if pl.Name == char.Name then
+                        return pl
+                    end
+                end
+            end
+        end
+        return nil
     end
 
     local function isPlayerDowned(pl)
@@ -3414,23 +3412,40 @@ local InstantReviveModule = (function()
 
     local function reviveLoop()
         while enabled do
-            if isCurrentlyEmoting and not Options.ReviveWhileEmoteToggle.Value then
-                task.wait(0.3)
+            local myChar = LocalPlayer.Character
+            local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
+            if not myHRP then
+                task.wait(loopDelay)
                 continue
             end
 
-            local myChar = LocalPlayer.Character
-            if myChar and myChar:FindFirstChild("HumanoidRootPart") then
-                local myHRP = myChar.HumanoidRootPart
+            local myTag = getPlayerTag(LocalPlayer)
+            if not myTag then
+                task.wait(loopDelay)
+                continue
+            end
 
-                for _, pl in Players:GetPlayers() do
-                    if pl ~= LocalPlayer and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
-                        if isPlayerDowned(pl) then
-                            local dist = (myHRP.Position - pl.Character.HumanoidRootPart.Position).Magnitude
+            local playersFolder = workspace:FindFirstChild("Players")
+            if not playersFolder then
+                task.wait(loopDelay)
+                continue
+            end
+
+            for _, otherChar in ipairs(playersFolder:GetChildren()) do
+                if otherChar.Name ~= LocalPlayer.Name then
+                    local otherTag = otherChar:GetAttribute("Tag")
+                    if otherTag then
+                        local otherHrp = otherChar:FindFirstChild("HumanoidRootPart")
+                        if otherHrp then
+                            local dist = (myHRP.Position - otherHrp.Position).Magnitude
                             if dist <= reviveRange then
-                                pcall(function()
-                                    interactEvent:FireServer("Revive", true, pl.Name)
-                                end)
+                                local pl = getPlayerByTag(otherTag)
+                                if pl and isPlayerDowned(pl) then
+                                    if InteractEvent then
+                                        InteractEvent:FireServer("Revive", otherTag, true)
+                                    end
+                                    task.wait(0.1)
+                                end
                             end
                         end
                     end
@@ -3444,25 +3459,12 @@ local InstantReviveModule = (function()
     local function start()
         if handle then return end
         enabled = true
-        updateEmoteStatus()
-
-        if LocalPlayer.Character then
-            stateConnection = LocalPlayer.Character:GetAttributeChangedSignal("State"):Connect(updateEmoteStatus)
-        end
-        LocalPlayer.CharacterAdded:Connect(function(char)
-            if stateConnection then stateConnection:Disconnect() end
-            stateConnection = char:GetAttributeChangedSignal("State"):Connect(updateEmoteStatus)
-            updateEmoteStatus()
-        end)
-
         handle = task.spawn(reviveLoop)
     end
 
     local function stop()
         enabled = false
         if handle then task.cancel(handle) handle = nil end
-        if stateConnection then stateConnection:Disconnect() stateConnection = nil end
-        isCurrentlyEmoting = false
     end
 
     return {
@@ -3472,23 +3474,83 @@ local InstantReviveModule = (function()
     }
 end)()
 
-InstantReviveToggle:OnChanged(function(state)
-    if state then
-        InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
-        InstantReviveModule.Start()
-    else
-        InstantReviveModule.Stop()
-    end
-end)
+-- ========== ОКОШКИ ==========
 
-ReviveDelaySlider:OnChanged(function(value)
-    getgenv().InstantReviveDelay = value
-    InstantReviveModule.SetDelay(value)
-end)
+InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
+    Title = "Instant Revive",
+    Default = false,
+    Callback = function(state)
+        if state then
+            InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
+            InstantReviveModule.Start()
+        else
+            InstantReviveModule.Stop()
+        end
+    end
+})
+
+ReviveDelaySlider = MiscTab:AddSlider("ReviveDelaySlider", {
+    Title = "Revive Delay",
+    Min = 0,
+    Max = 1,
+    Default = 0.15,
+    Rounding = 2,
+    Callback = function(value)
+        getgenv().InstantReviveDelay = value
+        InstantReviveModule.SetDelay(value)
+    end
+})
+
+-- ========== GUI КНОПКА ==========
+
+local function createGradientButton(parent, position, size, text)
+    local button = Instance.new("Frame")
+    button.Name = "GradientBtn"
+    button.BackgroundTransparency = 0.7
+    button.Size = size
+    button.Position = position
+    button.Draggable = true
+    button.Active = true
+    button.Selectable = true
+    button.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.2, 0)
+    corner.Parent = button
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+    }
+    gradient.Parent = button
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(139, 0, 0)
+    stroke.Thickness = 2
+    stroke.Parent = button
+
+    local label = Instance.new("TextLabel")
+    label.Text = text
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 16
+    label.Font = Enum.Font.GothamBold
+    label.Parent = button
+
+    local clicker = Instance.new("TextButton")
+    clicker.Size = UDim2.new(1, 0, 1, 0)
+    clicker.BackgroundTransparency = 1
+    clicker.Text = ""
+    clicker.ZIndex = 5
+    clicker.Parent = button
+
+    return button, clicker
+end
 
 local instantReviveButtonScreenGui = nil
-local instantReviveButton = nil
-local instantReviveKeybindValue = "R"
 local instantReviveButtonState = false
 
 local function createInstantReviveButton()
@@ -3504,30 +3566,19 @@ local function createInstantReviveButton()
     instantReviveButtonScreenGui.ResetOnSpawn = false
     instantReviveButtonScreenGui.Parent = CoreGui
     
-    local buttonSize = 180
-    if Options.InstantReviveButtonSizeInput and Options.InstantReviveButtonSizeInput.Value and tonumber(Options.InstantReviveButtonSizeInput.Value) then
-        buttonSize = tonumber(Options.InstantReviveButtonSizeInput.Value)
-    end
-    local btnWidth = math.max(150, math.min(buttonSize, 400))
-    local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
-    
-    
-    local btn, clicker, stroke = createGradientButton(
+    local btn, clicker = createGradientButton(
         instantReviveButtonScreenGui,
-        UDim2.new(0.5, -btnWidth/2, 0.5, -btnHeight/2),
-        UDim2.new(0, btnWidth, 0, btnHeight),
-        instantReviveButtonState and "Instant Revive:On" or "Instant Revive:Off"
+        UDim2.new(0.5, -90, 0.5, -35),
+        UDim2.new(0, 180, 0, 70),
+        instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
     )
     
     clicker.MouseButton1Click:Connect(function()
-        
         instantReviveButtonState = not instantReviveButtonState
         
-        
         if btn:FindFirstChild("TextLabel") then
-            btn.TextLabel.Text = instantReviveButtonState and "Instant Revive:On" or "Instant Revive:Off"
+            btn.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
         end
-        
         
         if instantReviveButtonState then
             InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
@@ -3536,14 +3587,10 @@ local function createInstantReviveButton()
             InstantReviveModule.Stop()
         end
         
-        
         if Options.InstantReviveToggle then
             Options.InstantReviveToggle:SetValue(instantReviveButtonState)
         end
     end)
-    
-    instantReviveButton = btn
-    return instantReviveButtonScreenGui
 end
 
 InstantReviveButtonToggle = MiscTab:AddToggle("InstantReviveButtonToggle", {
@@ -3565,13 +3612,8 @@ InstantReviveKeybind = MiscTab:AddKeybind("InstantReviveKeybind", {
     Title = "Instant Revive Keybind",
     Mode = "Toggle",
     Default = "R",
-    ChangedCallback = function(New)
-        instantReviveKeybindValue = New
-    end,
     Callback = function()
-        
         instantReviveButtonState = not instantReviveButtonState
-        
         
         if instantReviveButtonState then
             InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
@@ -3580,14 +3622,12 @@ InstantReviveKeybind = MiscTab:AddKeybind("InstantReviveKeybind", {
             InstantReviveModule.Stop()
         end
         
-        
         if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("GradientBtn") then
             local button = instantReviveButtonScreenGui:FindFirstChild("GradientBtn")
             if button and button:FindFirstChild("TextLabel") then
-                button.TextLabel.Text = instantReviveButtonState and "Instant Revive:On" or "Instant Revive:Off"
+                button.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
             end
         end
-        
         
         if Options.InstantReviveToggle then
             Options.InstantReviveToggle:SetValue(instantReviveButtonState)
@@ -3597,7 +3637,6 @@ InstantReviveKeybind = MiscTab:AddKeybind("InstantReviveKeybind", {
 
 InstantReviveToggle:OnChanged(function(Value)
     instantReviveButtonState = Value
-    
     
     if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("GradientBtn") then
         local button = instantReviveButtonScreenGui:FindFirstChild("GradientBtn")
