@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 1",
+    Title = "Draconic Hub 2",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3623,10 +3623,6 @@ end)
 
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
--- ============================================
--- AUTO CARRY (по тегам игроков из workspace.Players)
--- ============================================
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
@@ -3706,8 +3702,6 @@ local function stopAutoCarry()
     end
 end
 
--- ========== ОКОШКИ ==========
-
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
     Title = "Auto Carry",
     Default = false,
@@ -3737,8 +3731,6 @@ CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
         AutoCarryToggle:SetValue(not AutoCarryToggle.Value)
     end
 })
-
--- ========== GUI КНОПКА ==========
 
 local carryButtonScreenGui = nil
 local carryButton = nil
@@ -6654,16 +6646,65 @@ ResetCarryAnimButton = VisualsTab:AddButton({
 
 VisualsTab:AddSection("NameTag Changers", "solar/tag-bold")
 
-function updateNametagList()
-    nametagValues = {"Ignore", "None"}
-    nametagsFolder = game:GetService("ReplicatedStorage").Items.Nametags
+-- ============================================
+-- NAMETAG CHANGERS (новый код)
+-- ============================================
+
+local function getAllNametagFolders()
+    local paths = {}
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
     
-    if nametagsFolder then
-        for _, nametagModule in ipairs(nametagsFolder:GetChildren()) do
-            if nametagModule:IsA("ModuleScript") then
-                success, nametagData = pcall(require, nametagModule)
-                if success and nametagData and nametagData.AppearanceInfo then
-                    table.insert(nametagValues, nametagData.AppearanceInfo.Name)
+    local possiblePaths = {
+        -- Base
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("BaseItems") and ReplicatedStorage.Items.BaseItems:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Base") and ReplicatedStorage.Items.ItemPacks.Base:FindFirstChild("Special") and ReplicatedStorage.Items.ItemPacks.Base.Special:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Base") and ReplicatedStorage.Items.ItemPacks.Base:FindFirstChild("ForsakenCollabUpdate") and ReplicatedStorage.Items.ItemPacks.Base.ForsakenCollabUpdate:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Base") and ReplicatedStorage.Items.ItemPacks.Base:FindFirstChild("DailyShop") and ReplicatedStorage.Items.ItemPacks.Base.DailyShop:FindFirstChild("Nametags"),
+        -- Events 2024
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2024") and ReplicatedStorage.Items.ItemPacks.Events["2024"]:FindFirstChild("Xmas2024") and ReplicatedStorage.Items.ItemPacks.Events["2024"].Xmas2024:FindFirstChild("Nametags"),
+        -- Events 2025
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"]:FindFirstChild("Hlwn2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"].Hlwn2025:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"]:FindFirstChild("StPatricks2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"].StPatricks2025:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"]:FindFirstChild("Summer2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"].Summer2025:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"]:FindFirstChild("Valentines2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"].Valentines2025:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2025") and ReplicatedStorage.Items.ItemPacks.Events["2025"]:FindFirstChild("XMAS25") and ReplicatedStorage.Items.ItemPacks.Events["2025"].XMAS25:FindFirstChild("Nametags"),
+        -- Events 2026
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2026") and ReplicatedStorage.Items.ItemPacks.Events["2026"]:FindFirstChild("SUMMER26") and ReplicatedStorage.Items.ItemPacks.Events["2026"].SUMMER26:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2026") and ReplicatedStorage.Items.ItemPacks.Events["2026"]:FindFirstChild("Spring2026") and ReplicatedStorage.Items.ItemPacks.Events["2026"].Spring2026:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2026") and ReplicatedStorage.Items.ItemPacks.Events["2026"]:FindFirstChild("StPatricks2026") and ReplicatedStorage.Items.ItemPacks.Events["2026"].StPatricks2026:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Events") and ReplicatedStorage.Items.ItemPacks.Events:FindFirstChild("2026") and ReplicatedStorage.Items.ItemPacks.Events["2026"]:FindFirstChild("Valentines2026") and ReplicatedStorage.Items.ItemPacks.Events["2026"].Valentines2026:FindFirstChild("Nametags"),
+        -- Events Daily Shop
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("EventsDailyShop") and ReplicatedStorage.Items.ItemPacks.EventsDailyShop:FindFirstChild("Easter") and ReplicatedStorage.Items.ItemPacks.EventsDailyShop.Easter:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("EventsDailyShop") and ReplicatedStorage.Items.ItemPacks.EventsDailyShop:FindFirstChild("OldRoblox") and ReplicatedStorage.Items.ItemPacks.EventsDailyShop.OldRoblox:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("EventsDailyShop") and ReplicatedStorage.Items.ItemPacks.EventsDailyShop:FindFirstChild("Thanksgiving2025") and ReplicatedStorage.Items.ItemPacks.EventsDailyShop.Thanksgiving2025:FindFirstChild("Nametags"),
+        -- Gamepass
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Gamepass") and ReplicatedStorage.Items.ItemPacks.Gamepass:FindFirstChild("2026") and ReplicatedStorage.Items.ItemPacks.Gamepass["2026"]:FindFirstChild("BeeSet") and ReplicatedStorage.Items.ItemPacks.Gamepass["2026"].BeeSet:FindFirstChild("Nametags"),
+        ReplicatedStorage:FindFirstChild("Items") and ReplicatedStorage.Items:FindFirstChild("ItemPacks") and ReplicatedStorage.Items.ItemPacks:FindFirstChild("Gamepass") and ReplicatedStorage.Items.ItemPacks.Gamepass:FindFirstChild("2026") and ReplicatedStorage.Items.ItemPacks.Gamepass["2026"]:FindFirstChild("PoseidonSet") and ReplicatedStorage.Items.ItemPacks.Gamepass["2026"].PoseidonSet:FindFirstChild("Nametags")
+    }
+    
+    for _, path in ipairs(possiblePaths) do
+        if path then
+            table.insert(paths, path)
+        end
+    end
+    
+    return paths
+end
+
+function updateNametagList()
+    local nametagValues = {"Ignore", "None"}
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    
+    local folders = getAllNametagFolders()
+    
+    for _, folder in ipairs(folders) do
+        if folder then
+            for _, nametagModule in ipairs(folder:GetChildren()) do
+                if nametagModule:IsA("ModuleScript") then
+                    local success, nametagData = pcall(require, nametagModule)
+                    if success and nametagData and nametagData.AppearanceInfo then
+                        table.insert(nametagValues, nametagData.AppearanceInfo.Name)
+                    end
                 end
             end
         end
@@ -6679,12 +6720,12 @@ VisualNametagDropdown = VisualsTab:AddDropdown("VisualNametagDropdown", {
     Multi = false,
     Default = "Ignore",
     Callback = function(Value)
-        playerFolder = workspace.Game.Players:FindFirstChild(game.Players.LocalPlayer.Name)
+        local playerFolder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players") and workspace.Game.Players:FindFirstChild(game.Players.LocalPlayer.Name)
         if playerFolder then
             if Value == "None" then
                 playerFolder:SetAttribute("Nametag", nil)
             elseif Value ~= "Ignore" then
-                cleanValue = Value:gsub("%s+", "")
+                local cleanValue = Value:gsub("%s+", "")
                 playerFolder:SetAttribute("Nametag", cleanValue)
             end
         end
@@ -6693,25 +6734,25 @@ VisualNametagDropdown = VisualsTab:AddDropdown("VisualNametagDropdown", {
 
 game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
     task.wait(1)
-    playerFolder = workspace.Game.Players:FindFirstChild(game.Players.LocalPlayer.Name)
+    local playerFolder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players") and workspace.Game.Players:FindFirstChild(game.Players.LocalPlayer.Name)
     if playerFolder and Options.VisualNametagDropdown and Options.VisualNametagDropdown.Value ~= "Ignore" then
         if Options.VisualNametagDropdown.Value == "None" then
             playerFolder:SetAttribute("Nametag", nil)
         else
-            cleanValue = Options.VisualNametagDropdown.Value:gsub("%s+", "")
+            local cleanValue = Options.VisualNametagDropdown.Value:gsub("%s+", "")
             playerFolder:SetAttribute("Nametag", cleanValue)
         end
     end
 end)
 
 game:GetService("RunService").Heartbeat:Connect(function()
-    playerFolder = workspace.Game.Players:FindFirstChild(game.Players.LocalPlayer.Name)
+    local playerFolder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players") and workspace.Game.Players:FindFirstChild(game.Players.LocalPlayer.Name)
     if playerFolder and Options.VisualNametagDropdown and Options.VisualNametagDropdown.Value ~= "Ignore" then
         if Options.VisualNametagDropdown.Value == "None" then
             playerFolder:SetAttribute("Nametag", nil)
         else
-            cleanValue = Options.VisualNametagDropdown.Value:gsub("%s+", "")
-            currentTag = playerFolder:GetAttribute("Nametag")
+            local cleanValue = Options.VisualNametagDropdown.Value:gsub("%s+", "")
+            local currentTag = playerFolder:GetAttribute("Nametag")
             if currentTag ~= cleanValue then
                 playerFolder:SetAttribute("Nametag", cleanValue)
             end
