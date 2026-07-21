@@ -2980,7 +2980,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local currentSettings = {
     Speed = 1500,
-    JumpPower = 8,
+    JumpPower = 3.5,
     JumpCap = 2,
     JumpSpeedMultiplier = 1.5,
     FOV = 70
@@ -3057,8 +3057,8 @@ MiscTab:AddInput("SpeedInput", {
 
 MiscTab:AddInput("JumpPowerInput", {
     Title = "Player Jump",
-    Default = "8",
-    Placeholder = "Default 8",
+    Default = "3.5",
+    Placeholder = "Default 3.5",
     Numeric = true,
     Finished = true,
     Callback = function(Value)
