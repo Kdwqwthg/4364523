@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 7",
+    Title = "Draconic Hub 8",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3357,17 +3357,28 @@ local function createGradientButton(parent, position, size, text, onClickCallbac
     return button, clicker, stroke
 end
 
--- ============================================
--- INSTANT REVIVE (без проверки эмоций)
--- ============================================
+local InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
+    Title = "Instant Revive",
+    Default = false
+})
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
+local ReviveDelaySlider = MiscTab:AddSlider("ReviveDelaySlider", {
+    Title = "Revive Delay",
+    Min = 0,
+    Max = 1,
+    Default = 0.15,
+    Rounding = 2,
+    Callback = function(value)
+        getgenv().InstantReviveDelay = value
+    end
+})
 getgenv().InstantReviveDelay = 0.15
 
 local InstantReviveModule = (function()
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local LocalPlayer = Players.LocalPlayer
+
     local reviveRange = 10
     local loopDelay = getgenv().InstantReviveDelay or 0.15
 
@@ -3474,81 +3485,19 @@ local InstantReviveModule = (function()
     }
 end)()
 
--- ========== ОКОШКИ ==========
-
-InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
-    Title = "Instant Revive",
-    Default = false,
-    Callback = function(state)
-        if state then
-            InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
-            InstantReviveModule.Start()
-        else
-            InstantReviveModule.Stop()
-        end
+InstantReviveToggle:OnChanged(function(state)
+    if state then
+        InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
+        InstantReviveModule.Start()
+    else
+        InstantReviveModule.Stop()
     end
-})
+end)
 
-ReviveDelaySlider = MiscTab:AddSlider("ReviveDelaySlider", {
-    Title = "Revive Delay",
-    Min = 0,
-    Max = 1,
-    Default = 0.15,
-    Rounding = 2,
-    Callback = function(value)
-        getgenv().InstantReviveDelay = value
-        InstantReviveModule.SetDelay(value)
-    end
-})
-
--- ========== GUI КНОПКА ==========
-
-local function createGradientButton(parent, position, size, text)
-    local button = Instance.new("Frame")
-    button.Name = "GradientBtn"
-    button.BackgroundTransparency = 0.7
-    button.Size = size
-    button.Position = position
-    button.Draggable = true
-    button.Active = true
-    button.Selectable = true
-    button.Parent = parent
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.2, 0)
-    corner.Parent = button
-
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
-    }
-    gradient.Parent = button
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(139, 0, 0)
-    stroke.Thickness = 2
-    stroke.Parent = button
-
-    local label = Instance.new("TextLabel")
-    label.Text = text
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 16
-    label.Font = Enum.Font.GothamBold
-    label.Parent = button
-
-    local clicker = Instance.new("TextButton")
-    clicker.Size = UDim2.new(1, 0, 1, 0)
-    clicker.BackgroundTransparency = 1
-    clicker.Text = ""
-    clicker.ZIndex = 5
-    clicker.Parent = button
-
-    return button, clicker
-end
+ReviveDelaySlider:OnChanged(function(value)
+    getgenv().InstantReviveDelay = value
+    InstantReviveModule.SetDelay(value)
+end)
 
 local instantReviveButtonScreenGui = nil
 local instantReviveButtonState = false
@@ -3566,19 +3515,19 @@ local function createInstantReviveButton()
     instantReviveButtonScreenGui.ResetOnSpawn = false
     instantReviveButtonScreenGui.Parent = CoreGui
     
-    local btn, clicker = createGradientButton(
-        instantReviveButtonScreenGui,
-        UDim2.new(0.5, -90, 0.5, -35),
-        UDim2.new(0, 180, 0, 70),
-        instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
-    )
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 180, 0, 70)
+    btn.Position = UDim2.new(0.5, -90, 0.5, -35)
+    btn.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+    btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.Parent = instantReviveButtonScreenGui
     
-    clicker.MouseButton1Click:Connect(function()
+    btn.MouseButton1Click:Connect(function()
         instantReviveButtonState = not instantReviveButtonState
-        
-        if btn:FindFirstChild("TextLabel") then
-            btn.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
-        end
+        btn.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
         
         if instantReviveButtonState then
             InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
@@ -3591,6 +3540,8 @@ local function createInstantReviveButton()
             Options.InstantReviveToggle:SetValue(instantReviveButtonState)
         end
     end)
+    
+    return instantReviveButtonScreenGui
 end
 
 InstantReviveButtonToggle = MiscTab:AddToggle("InstantReviveButtonToggle", {
@@ -3612,21 +3563,24 @@ InstantReviveKeybind = MiscTab:AddKeybind("InstantReviveKeybind", {
     Title = "Instant Revive Keybind",
     Mode = "Toggle",
     Default = "R",
+    ChangedCallback = function(New)
+        instantReviveKeybindValue = New
+    end,
     Callback = function()
         instantReviveButtonState = not instantReviveButtonState
+        
+        if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("TextButton") then
+            local btn = instantReviveButtonScreenGui:FindFirstChild("TextButton")
+            if btn then
+                btn.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+            end
+        end
         
         if instantReviveButtonState then
             InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
             InstantReviveModule.Start()
         else
             InstantReviveModule.Stop()
-        end
-        
-        if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("GradientBtn") then
-            local button = instantReviveButtonScreenGui:FindFirstChild("GradientBtn")
-            if button and button:FindFirstChild("TextLabel") then
-                button.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
-            end
         end
         
         if Options.InstantReviveToggle then
@@ -3638,10 +3592,10 @@ InstantReviveKeybind = MiscTab:AddKeybind("InstantReviveKeybind", {
 InstantReviveToggle:OnChanged(function(Value)
     instantReviveButtonState = Value
     
-    if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("GradientBtn") then
-        local button = instantReviveButtonScreenGui:FindFirstChild("GradientBtn")
-        if button and button:FindFirstChild("TextLabel") then
-            button.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+    if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("TextButton") then
+        local btn = instantReviveButtonScreenGui:FindFirstChild("TextButton")
+        if btn then
+            btn.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
         end
     end
 end)
@@ -3659,6 +3613,10 @@ end)
 
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
+-- ============================================
+-- AUTO CARRY (по тегам игроков из workspace.Players)
+-- ============================================
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
@@ -3670,9 +3628,9 @@ featureStates.AutoCarry = false
 local AutoCarryConnection = nil
 local InteractEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
 
-local function getPlayerTag(player)
-    if not player then return nil end
-    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(player.Name)
+local function getPlayerTag(pl)
+    if not pl then return nil end
+    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(pl.Name)
     if char then
         return char:GetAttribute("Tag")
     end
@@ -3738,6 +3696,8 @@ local function stopAutoCarry()
     end
 end
 
+-- ========== ОКОШКИ ==========
+
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
     Title = "Auto Carry",
     Default = false,
@@ -3765,86 +3725,68 @@ CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
     end
 })
 
-local function createGradientButton(parent, position, size, text)
-    local button = Instance.new("Frame")
-    button.Name = "GradientBtn"
-    button.BackgroundTransparency = 0.7
-    button.Size = size
-    button.Position = position
-    button.Draggable = true
-    button.Active = true
-    button.Selectable = true
-    button.Parent = parent
+-- ========== GUI КНОПКА ==========
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0.2, 0)
-    corner.Parent = button
+local carryButtonScreenGui = nil
+local carryButtonState = false
 
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
-    }
-    gradient.Parent = button
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(139, 0, 0)
-    stroke.Thickness = 2
-    stroke.Parent = button
-
-    local label = Instance.new("TextLabel")
-    label.Text = text
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextSize = 16
-    label.Font = Enum.Font.GothamBold
-    label.Parent = button
-
-    local clicker = Instance.new("TextButton")
-    clicker.Size = UDim2.new(1, 0, 1, 0)
-    clicker.BackgroundTransparency = 1
-    clicker.Text = ""
-    clicker.ZIndex = 5
-    clicker.Parent = button
-
-    return button, clicker
-end
-
-local function toggleAutoCarryGUI()
+local function createCarryButton()
     local CoreGui = game:GetService("CoreGui")
-    local existing = CoreGui:FindFirstChild("AutoCarryButtonGUI")
     
-    if existing then
-        existing:Destroy()
-    else
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "AutoCarryButtonGUI"
-        screenGui.ResetOnSpawn = false
-        screenGui.Parent = CoreGui
-        
-        local btn, clicker = createGradientButton(
-            screenGui,
-            UDim2.new(0.5, -90, 0.5, -35),
-            UDim2.new(0, 180, 0, 70),
-            featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
-        )
-        
-        clicker.MouseButton1Click:Connect(function()
-            AutoCarryToggle:SetValue(not AutoCarryToggle.Value)
-        end)
+    if carryButtonScreenGui then
+        carryButtonScreenGui:Destroy()
+        carryButtonScreenGui = nil
     end
+    
+    carryButtonScreenGui = Instance.new("ScreenGui")
+    carryButtonScreenGui.Name = "CarryButtonGUI"
+    carryButtonScreenGui.ResetOnSpawn = false
+    carryButtonScreenGui.Parent = CoreGui
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 180, 0, 70)
+    btn.Position = UDim2.new(0.5, -90, 0.5, -35)
+    btn.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
+    btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.Parent = carryButtonScreenGui
+    
+    btn.MouseButton1Click:Connect(function()
+        featureStates.AutoCarry = not featureStates.AutoCarry
+        btn.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
+        
+        if featureStates.AutoCarry then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+        
+        if Options.AutoCarryToggle then
+            Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
+        end
+    end)
+    
+    return carryButtonScreenGui
 end
 
 CarryGUIToggle:OnChanged(function(state)
     if state then
-        toggleAutoCarryGUI()
+        createCarryButton()
     else
-        local CoreGui = game:GetService("CoreGui")
-        local existing = CoreGui:FindFirstChild("AutoCarryButtonGUI")
-        if existing then
-            existing:Destroy()
+        if carryButtonScreenGui then
+            carryButtonScreenGui:Destroy()
+            carryButtonScreenGui = nil
+        end
+    end
+end)
+
+CarryKeybind:OnChanged(function()
+    if carryButtonScreenGui and carryButtonScreenGui:FindFirstChild("TextButton") then
+        local btn = carryButtonScreenGui:FindFirstChild("TextButton")
+        if btn then
+            btn.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
         end
     end
 end)
