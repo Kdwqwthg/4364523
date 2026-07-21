@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 4",
+    Title = "Draconic Hub 5",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2980,9 +2980,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local currentSettings = {
     Speed = 1500,
-    JumpPower = 3.5,
-    JumpCap = 1,
-    Strafe = 187,
+    JumpPower = 8,
+    JumpCap = 2,
+    JumpSpeedMultiplier = 1.5,
     FOV = 70
 }
 
@@ -3023,7 +3023,7 @@ local function applyAll()
         BaseStatsModule.Speed = currentSettings.Speed
         BaseStatsModule.JumpHeight = currentSettings.JumpPower
         BaseStatsModule.JumpCap = currentSettings.JumpCap
-        BaseStatsModule.AirStrafeAcceleration = currentSettings.Strafe
+        BaseStatsModule.JumpSpeedMultiplier = currentSettings.JumpSpeedMultiplier
     end
     
     local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
@@ -3034,7 +3034,6 @@ local function applyAll()
             humanoid.JumpPower = currentSettings.JumpPower
         end
         char:SetAttribute("JumpCap", currentSettings.JumpCap)
-        char:SetAttribute("AirStrafeAcceleration", currentSettings.Strafe)
     end
     
     applyFOV(currentSettings.FOV)
@@ -3058,8 +3057,8 @@ MiscTab:AddInput("SpeedInput", {
 
 MiscTab:AddInput("JumpPowerInput", {
     Title = "Player Jump",
-    Default = "3.5",
-    Placeholder = "Default 3.5",
+    Default = "8",
+    Placeholder = "Default 8",
     Numeric = true,
     Finished = true,
     Callback = function(Value)
@@ -3073,8 +3072,8 @@ MiscTab:AddInput("JumpPowerInput", {
 
 MiscTab:AddInput("JumpCapInput", {
     Title = "Player Jump Cap",
-    Default = "1",
-    Placeholder = "Default 1",
+    Default = "2",
+    Placeholder = "Default 2",
     Numeric = true,
     Finished = false,
     Callback = function(Value)
@@ -3088,14 +3087,14 @@ MiscTab:AddInput("JumpCapInput", {
 
 MiscTab:AddInput("StrafeInput", {
     Title = "Player Strafe Acceleration",
-    Default = "187",
-    Placeholder = "Default 187",
+    Default = "1.5",
+    Placeholder = "Default 1.5",
     Numeric = true,
     Finished = false,
     Callback = function(Value)
         local val = tonumber(Value)
-        if val and val >= 1 and val <= 100000000 then
-            currentSettings.Strafe = val
+        if val and val >= 0.1 and val <= 100 then
+            currentSettings.JumpSpeedMultiplier = val
             applyAll()
         end
     end
@@ -3116,17 +3115,17 @@ MiscTab:AddInput("FovInput", {
 })
 
 spawn(function()
-    while task.wait(0.1) do
+    while task.wait(0.05) do
         applyAll()
     end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
+    task.wait(0.3)
     applyAll()
 end)
 
-task.wait(0.5)
+task.wait(0.3)
 applyAll()
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
