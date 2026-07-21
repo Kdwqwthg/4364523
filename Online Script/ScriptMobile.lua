@@ -3500,6 +3500,8 @@ ReviveDelaySlider:OnChanged(function(value)
 end)
 
 local instantReviveButtonScreenGui = nil
+local instantReviveButton = nil
+local instantReviveKeybindValue = "R"
 local instantReviveButtonState = false
 
 local function createInstantReviveButton()
@@ -3515,19 +3517,26 @@ local function createInstantReviveButton()
     instantReviveButtonScreenGui.ResetOnSpawn = false
     instantReviveButtonScreenGui.Parent = CoreGui
     
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 180, 0, 70)
-    btn.Position = UDim2.new(0.5, -90, 0.5, -35)
-    btn.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
-    btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.Parent = instantReviveButtonScreenGui
+    local buttonSize = 180
+    if Options.InstantReviveButtonSizeInput and Options.InstantReviveButtonSizeInput.Value and tonumber(Options.InstantReviveButtonSizeInput.Value) then
+        buttonSize = tonumber(Options.InstantReviveButtonSizeInput.Value)
+    end
+    local btnWidth = math.max(150, math.min(buttonSize, 400))
+    local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
     
-    btn.MouseButton1Click:Connect(function()
+    local btn, clicker, stroke = createGradientButton(
+        instantReviveButtonScreenGui,
+        UDim2.new(0.5, -btnWidth/2, 0.5, -btnHeight/2),
+        UDim2.new(0, btnWidth, 0, btnHeight),
+        instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+    )
+    
+    clicker.MouseButton1Click:Connect(function()
         instantReviveButtonState = not instantReviveButtonState
-        btn.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+        
+        if btn:FindFirstChild("TextLabel") then
+            btn.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+        end
         
         if instantReviveButtonState then
             InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
@@ -3541,6 +3550,7 @@ local function createInstantReviveButton()
         end
     end)
     
+    instantReviveButton = btn
     return instantReviveButtonScreenGui
 end
 
@@ -3569,18 +3579,18 @@ InstantReviveKeybind = MiscTab:AddKeybind("InstantReviveKeybind", {
     Callback = function()
         instantReviveButtonState = not instantReviveButtonState
         
-        if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("TextButton") then
-            local btn = instantReviveButtonScreenGui:FindFirstChild("TextButton")
-            if btn then
-                btn.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
-            end
-        end
-        
         if instantReviveButtonState then
             InstantReviveModule.SetDelay(getgenv().InstantReviveDelay)
             InstantReviveModule.Start()
         else
             InstantReviveModule.Stop()
+        end
+        
+        if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("GradientBtn") then
+            local button = instantReviveButtonScreenGui:FindFirstChild("GradientBtn")
+            if button and button:FindFirstChild("TextLabel") then
+                button.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+            end
         end
         
         if Options.InstantReviveToggle then
@@ -3592,10 +3602,10 @@ InstantReviveKeybind = MiscTab:AddKeybind("InstantReviveKeybind", {
 InstantReviveToggle:OnChanged(function(Value)
     instantReviveButtonState = Value
     
-    if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("TextButton") then
-        local btn = instantReviveButtonScreenGui:FindFirstChild("TextButton")
-        if btn then
-            btn.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
+    if instantReviveButtonScreenGui and instantReviveButtonScreenGui:FindFirstChild("GradientBtn") then
+        local button = instantReviveButtonScreenGui:FindFirstChild("GradientBtn")
+        if button and button:FindFirstChild("TextLabel") then
+            button.TextLabel.Text = instantReviveButtonState and "Instant Revive: On" or "Instant Revive: Off"
         end
     end
 end)
@@ -3720,6 +3730,9 @@ CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
     Title = "Auto Carry Keybind",
     Mode = "Toggle",
     Default = "F3",
+    ChangedCallback = function(New)
+        carryKeybindValue = New
+    end,
     Callback = function()
         AutoCarryToggle:SetValue(not AutoCarryToggle.Value)
     end
@@ -3728,6 +3741,8 @@ CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
 -- ========== GUI КНОПКА ==========
 
 local carryButtonScreenGui = nil
+local carryButton = nil
+local carryKeybindValue = "F3"
 local carryButtonState = false
 
 local function createCarryButton()
@@ -3743,19 +3758,26 @@ local function createCarryButton()
     carryButtonScreenGui.ResetOnSpawn = false
     carryButtonScreenGui.Parent = CoreGui
     
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 180, 0, 70)
-    btn.Position = UDim2.new(0.5, -90, 0.5, -35)
-    btn.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
-    btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.Parent = carryButtonScreenGui
+    local buttonSize = 180
+    if Options.CarryButtonSizeInput and Options.CarryButtonSizeInput.Value and tonumber(Options.CarryButtonSizeInput.Value) then
+        buttonSize = tonumber(Options.CarryButtonSizeInput.Value)
+    end
+    local btnWidth = math.max(150, math.min(buttonSize, 400))
+    local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
     
-    btn.MouseButton1Click:Connect(function()
+    local btn, clicker, stroke = createGradientButton(
+        carryButtonScreenGui,
+        UDim2.new(0.5, -btnWidth/2, 0.5, -btnHeight/2),
+        UDim2.new(0, btnWidth, 0, btnHeight),
+        featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
+    )
+    
+    clicker.MouseButton1Click:Connect(function()
         featureStates.AutoCarry = not featureStates.AutoCarry
-        btn.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
+        
+        if btn:FindFirstChild("TextLabel") then
+            btn.TextLabel.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
+        end
         
         if featureStates.AutoCarry then
             startAutoCarry()
@@ -3768,6 +3790,7 @@ local function createCarryButton()
         end
     end)
     
+    carryButton = btn
     return carryButtonScreenGui
 end
 
@@ -3783,10 +3806,21 @@ CarryGUIToggle:OnChanged(function(state)
 end)
 
 CarryKeybind:OnChanged(function()
-    if carryButtonScreenGui and carryButtonScreenGui:FindFirstChild("TextButton") then
-        local btn = carryButtonScreenGui:FindFirstChild("TextButton")
-        if btn then
-            btn.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
+    if carryButtonScreenGui and carryButtonScreenGui:FindFirstChild("GradientBtn") then
+        local btn = carryButtonScreenGui:FindFirstChild("GradientBtn")
+        if btn and btn:FindFirstChild("TextLabel") then
+            btn.TextLabel.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
+        end
+    end
+end)
+
+AutoCarryToggle:OnChanged(function(Value)
+    carryButtonState = Value
+    
+    if carryButtonScreenGui and carryButtonScreenGui:FindFirstChild("GradientBtn") then
+        local btn = carryButtonScreenGui:FindFirstChild("GradientBtn")
+        if btn and btn:FindFirstChild("TextLabel") then
+            btn.TextLabel.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
         end
     end
 end)
