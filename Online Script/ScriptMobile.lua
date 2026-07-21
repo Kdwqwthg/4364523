@@ -3620,54 +3620,71 @@ end)
 
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
-AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
-    Title = "Auto Carry",
-    Default = false
-})
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-CarryGUIToggle = MiscTab:AddToggle("CarryGUIToggle", {
-    Title = "Carry GUI Button",
-    Default = false
-})
-
-CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
-    Title = "Auto Carry Keybind",
-    Mode = "Toggle",
-    Default = "F3",
-    ChangedCallback = function(New)
-    end,
-    Callback = function()
-        Options.AutoCarryToggle:SetValue(not Options.AutoCarryToggle.Value)
-    end
-})
+local featureStates = featureStates or {}
+featureStates.AutoCarry = false
 
 local AutoCarryConnection = nil
-local featureStates = featureStates or {}
-local player = game:GetService("Players").LocalPlayer
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local InteractEvent = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
+
+local function getPlayerTag(player)
+    if not player then return nil end
+    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(player.Name)
+    if char then
+        return char:GetAttribute("Tag")
+    end
+    return nil
+end
+
+local function getPlayerByTag(tag)
+    if not tag then return nil end
+    local playersFolder = workspace:FindFirstChild("Players")
+    if not playersFolder then return nil end
+    for _, char in ipairs(playersFolder:GetChildren()) do
+        if char:GetAttribute("Tag") == tag then
+            for _, pl in ipairs(Players:GetPlayers()) do
+                if pl.Name == char.Name then
+                    return pl
+                end
+            end
+        end
+    end
+    return nil
+end
 
 local function startAutoCarry()
     if AutoCarryConnection then return end
     
     AutoCarryConnection = RunService.Heartbeat:Connect(function()
-        if not featureStates.AutoCarry then 
-            return 
-        end
+        if not featureStates.AutoCarry then return end
         
-        local char = player.Character
+        local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
         
-        if hrp then
-            for _, other in ipairs(Players:GetPlayers()) do
-                if other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = (hrp.Position - other.Character.HumanoidRootPart.Position).Magnitude
-                    if dist <= 20 then
-                        local args = { "Carry", [3] = other.Name }
-                        pcall(function()
-                            game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Character"):WaitForChild("Interact"):FireServer(unpack(args))
-                        end)
-                        task.wait(0.01)
+        local myTag = getPlayerTag(LocalPlayer)
+        if not myTag then return end
+        
+        local playersFolder = workspace:FindFirstChild("Players")
+        if not playersFolder then return end
+        
+        for _, otherChar in ipairs(playersFolder:GetChildren()) do
+            if otherChar.Name ~= LocalPlayer.Name then
+                local otherTag = otherChar:GetAttribute("Tag")
+                if otherTag then
+                    local otherHrp = otherChar:FindFirstChild("HumanoidRootPart")
+                    if otherHrp then
+                        local dist = (hrp.Position - otherHrp.Position).Magnitude
+                        if dist <= 20 then
+                            if InteractEvent then
+                                InteractEvent:FireServer("Carry", otherTag)
+                            end
+                            task.wait(0.01)
+                        end
                     end
                 end
             end
@@ -3682,83 +3699,113 @@ local function stopAutoCarry()
     end
 end
 
+AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
+    Title = "Auto Carry",
+    Default = false,
+    Callback = function(state)
+        featureStates.AutoCarry = state
+        if state then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+    end
+})
+
+CarryGUIToggle = MiscTab:AddToggle("CarryGUIToggle", {
+    Title = "Carry GUI Button",
+    Default = false
+})
+
+CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
+    Title = "Auto Carry Keybind",
+    Mode = "Toggle",
+    Default = "F3",
+    Callback = function()
+        AutoCarryToggle:SetValue(not AutoCarryToggle.Value)
+    end
+})
+
+local function createGradientButton(parent, position, size, text)
+    local button = Instance.new("Frame")
+    button.Name = "GradientBtn"
+    button.BackgroundTransparency = 0.7
+    button.Size = size
+    button.Position = position
+    button.Draggable = true
+    button.Active = true
+    button.Selectable = true
+    button.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.2, 0)
+    corner.Parent = button
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+    }
+    gradient.Parent = button
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(139, 0, 0)
+    stroke.Thickness = 2
+    stroke.Parent = button
+
+    local label = Instance.new("TextLabel")
+    label.Text = text
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 16
+    label.Font = Enum.Font.GothamBold
+    label.Parent = button
+
+    local clicker = Instance.new("TextButton")
+    clicker.Size = UDim2.new(1, 0, 1, 0)
+    clicker.BackgroundTransparency = 1
+    clicker.Text = ""
+    clicker.ZIndex = 5
+    clicker.Parent = button
+
+    return button, clicker
+end
+
 local function toggleAutoCarryGUI()
     local CoreGui = game:GetService("CoreGui")
-    local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
+    local existing = CoreGui:FindFirstChild("AutoCarryButtonGUI")
     
-    if existingScreenGui then
-        existingScreenGui:Destroy()
+    if existing then
+        existing:Destroy()
     else
         local screenGui = Instance.new("ScreenGui")
         screenGui.Name = "AutoCarryButtonGUI"
         screenGui.ResetOnSpawn = false
         screenGui.Parent = CoreGui
         
-        local buttonSize = 180
-        if Options.CarryButtonSizeInput and Options.CarryButtonSizeInput.Value and tonumber(Options.CarryButtonSizeInput.Value) then
-            buttonSize = tonumber(Options.CarryButtonSizeInput.Value)
-        end
-        
-        local btnWidth = math.max(150, math.min(buttonSize, 400))
-        local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
-        
-        local btn, clicker, stroke = createGradientButton(
+        local btn, clicker = createGradientButton(
             screenGui,
-            UDim2.new(0.5, -btnWidth/2, 0.5, -btnHeight/2),
-            UDim2.new(0, btnWidth, 0, btnHeight),
-            "Auto Carry: Off"
+            UDim2.new(0.5, -90, 0.5, -35),
+            UDim2.new(0, 180, 0, 70),
+            featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
         )
         
-        local function updateButtonText()
-            if btn and btn:FindFirstChild("TextLabel") then
-                btn.TextLabel.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
-            end
-        end
-        
-        updateButtonText()
-        
         clicker.MouseButton1Click:Connect(function()
-            featureStates.AutoCarry = not featureStates.AutoCarry
-            updateButtonText()
-            
-            if featureStates.AutoCarry then
-                startAutoCarry()
-            else
-                stopAutoCarry()
-            end
-        end)
-        
-        AutoCarryToggle:OnChanged(function(state)
-            featureStates.AutoCarry = state
-            updateButtonText()
-            
-            if state then
-                startAutoCarry()
-            else
-                stopAutoCarry()
-            end
+            AutoCarryToggle:SetValue(not AutoCarryToggle.Value)
         end)
     end
 end
-
-AutoCarryToggle:OnChanged(function(state)
-    featureStates.AutoCarry = state
-    
-    if state then
-        startAutoCarry()
-    else
-        stopAutoCarry()
-    end
-end)
 
 CarryGUIToggle:OnChanged(function(state)
     if state then
         toggleAutoCarryGUI()
     else
         local CoreGui = game:GetService("CoreGui")
-        local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
-        if existingScreenGui then
-            existingScreenGui:Destroy()
+        local existing = CoreGui:FindFirstChild("AutoCarryButtonGUI")
+        if existing then
+            existing:Destroy()
         end
     end
 end)
