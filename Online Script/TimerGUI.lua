@@ -1,3 +1,4 @@
+--23
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -264,71 +265,43 @@ local function getAllTimers()
     return timers
 end
 
--- Функция для проверки, активен ли таймер (показывает время)
-local lastTexts = {}
-local function isTimerActive(timerObject)
+-- Функция для проверки, показывает ли таймер время (не нули)
+local function isTimerShowingTime(timerObject)
     if not timerObject then return false end
     local text = timerObject.Text or ""
     
-    -- Если текст пустой или показывает только нули - не активен
+    -- Проверяем, что текст не пустой и не показывает нули
     if text == "" or text == "0:00" or text == "00:00" or text == "0:00.0" or text == "00:00.0" then
         return false
     end
     
-    -- Проверяем, меняется ли текст (для этого храним предыдущие значения)
-    local timerKey = tostring(timerObject)
-    if not lastTexts[timerKey] then
-        lastTexts[timerKey] = text
-        return true -- Если видим впервые, считаем активным
-    end
-    
-    -- Если текст изменился - таймер активен
-    if lastTexts[timerKey] ~= text then
-        lastTexts[timerKey] = text
-        return true
-    end
-    
-    -- Если текст не меняется, проверяем прошло ли достаточно времени
-    -- Если текст не меняется более 1 секунды, считаем неактивным
     return true
 end
 
--- Функция для получения активного таймера
+-- Функция для получения первого активного таймера (который показывает время)
 local function getActiveTimer()
     local timers = getAllTimers()
     
-    -- Сначала проверяем первый путь (RoundTimer)
+    -- Проверяем все таймеры по порядку
     for _, timerData in ipairs(timers) do
-        if timerData.path == "RoundTimer" then
-            if isTimerActive(timerData.object) then
-                return timerData.object
-            end
+        if isTimerShowingTime(timerData.object) then
+            return timerData.object
         end
     end
     
-    -- Если первый не активен, проверяем второй (IngameRoundTimer)
-    for _, timerData in ipairs(timers) do
-        if timerData.path == "IngameRoundTimer" then
-            if isTimerActive(timerData.object) then
-                return timerData.object
-            end
-        end
-    end
-    
-    -- Если оба не активны или не существуют, возвращаем nil
+    -- Если ни один таймер не показывает время
     return nil
 end
 
 local timerConnection
 local currentTimerObject = nil
 local checkInterval = nil
-local lastUpdateTime = tick()
 
 local function updateTimerDisplay()
     local activeTimer = getActiveTimer()
     
     if activeTimer then
-        -- Если нашли активный таймер
+        -- Нашли таймер, который показывает время
         if currentTimerObject ~= activeTimer then
             -- Отключаем старую связь если есть
             if timerConnection then
@@ -340,39 +313,16 @@ local function updateTimerDisplay()
             
             local function updateTimer()
                 local text = activeTimer.Text or "0:00"
-                -- Проверяем, что текст действительно изменился и это не нули
-                if text ~= "0:00" and text ~= "00:00" and text ~= "0:00.0" and text ~= "00:00.0" and text ~= "" then
-                    TimerLabel.Text = text
-                    TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    StatusLabel.Text = "ROUND ACTIVE"
-                    lastUpdateTime = tick()
-                else
-                    -- Если таймер показывает нули, проверяем через проверку
-                    TimerLabel.Text = text
-                end
+                TimerLabel.Text = text
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                StatusLabel.Text = "ROUND ACTIVE"
             end
             
             updateTimer()
             timerConnection = activeTimer:GetPropertyChangedSignal("Text"):Connect(updateTimer)
-        else
-            -- Проверяем, не завис ли текущий таймер
-            local currentText = activeTimer.Text or ""
-            if currentText == "0:00" or currentText == "00:00" or currentText == "0:00.0" or currentText == "00:00.0" or currentText == "" then
-                -- Если показывает нули, сбрасываем
-                if currentTimerObject then
-                    if timerConnection then
-                        timerConnection:Disconnect()
-                        timerConnection = nil
-                    end
-                    currentTimerObject = nil
-                end
-                TimerContainer.Visible = false
-                TimerLabel.Text = "JOIN GAME"
-                StatusLabel.Text = "WAITING"
-            end
         end
     else
-        -- Нет активных таймеров
+        -- Нет таймеров, показывающих время
         if currentTimerObject then
             if timerConnection then
                 timerConnection:Disconnect()
@@ -425,13 +375,16 @@ local function cleanupTimer()
     currentTimerObject = nil
 end
 
-TimerContainer.Destroying:Connect(function()
-    if backgroundAnimation then
-        backgroundAnimation:Disconnect()
-        backgroundAnimation = nil
+-- Исправленный обработчик уничтожения
+MainInterface.AncestryChanged:Connect(function()
+    if not MainInterface.Parent then
+        cleanupTimer()
     end
-    if checkInterval then
-        checkInterval:Disconnect()
-        checkInterval = nil
+end)
+
+-- Также добавляем обработчик для TimerContainer
+TimerContainer.AncestryChanged:Connect(function()
+    if not TimerContainer.Parent then
+        cleanupTimer()
     end
 end)
