@@ -1,12 +1,23 @@
+--123
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local UserInputService = game:GetService("UserInputService")
 
+local TimerLabel = nil
+local StatusLabel = nil
+local MainInterface = nil
+local TimerContainer = nil
+local backgroundAnimation = nil
+local timerConnection = nil
+local currentTimerObject = nil
+local activePath = nil
+
+-- ========== СОЗДАНИЕ GUI ==========
 local function CreateTimerGUI()
-    local MainInterface = Instance.new("ScreenGui")
-    local TimerContainer = Instance.new("Frame")
+    MainInterface = Instance.new("ScreenGui")
+    TimerContainer = Instance.new("Frame")
     local AspectRatio = Instance.new("UIAspectRatioConstraint")
     local SizeLimit = Instance.new("UISizeConstraint")
     local TimerDisplay = Instance.new("Frame")
@@ -28,6 +39,7 @@ local function CreateTimerGUI()
     MainInterface.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     MainInterface.Enabled = true
     MainInterface.DisplayOrder = 2
+    MainInterface.Visible = false
     
     TimerContainer.Name = "TimerContainer"
     TimerContainer.Parent = MainInterface
@@ -86,7 +98,6 @@ local function CreateTimerGUI()
     BackgroundGradient.Rotation = 0
     BackgroundGradient.Parent = BackgroundFrame
     
-    local backgroundAnimation
     backgroundAnimation = RunService.RenderStepped:Connect(function(delta)
         BackgroundGradient.Rotation = (BackgroundGradient.Rotation + 90 * delta) % 360
     end)
@@ -172,6 +183,9 @@ local function CreateTimerGUI()
     CountdownBorder.Color = Color3.fromRGB(255, 255, 255)
     CountdownBorder.Transparency = 0.7
 
+    TimerLabel = CountdownText
+    StatusLabel = StatusText
+
     -- ========== ПЕРЕТАСКИВАНИЕ ==========
     local dragging = false
     local dragInput = nil
@@ -216,81 +230,89 @@ local function CreateTimerGUI()
         end
     end)
 
-    return CountdownText, StatusText, MainInterface, TimerContainer, backgroundAnimation
+    return CountdownText, StatusText, MainInterface, TimerContainer
 end
 
-local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
+CreateTimerGUI()
 
--- ========== ПОИСК ТАЙМЕРА ПО НЕСКОЛЬКИМ ПУТЯМ ==========
-local function getTimerObject()
-    local paths = {
-        -- Путь 1: RoundTimer.Timer
-        function()
-            local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
-            if not gameGui then return nil end
-            local gameFolder = gameGui:FindFirstChild("Game")
-            if not gameFolder then return nil end
-            local hud = gameFolder:FindFirstChild("HUD")
-            if not hud then return nil end
-            local overlay = hud:FindFirstChild("Overlay")
-            if not overlay then return nil end
-            local roundOverlay = overlay:FindFirstChild("RoundOverlay")
-            if not roundOverlay then return nil end
-            local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
-            if not roundTimer then return nil end
-            local timer = roundTimer:FindFirstChild("Timer")
-            if not timer then return nil end
-            return timer
-        end,
-        -- Путь 2: IngameRoundTimer.Timer
-        function()
-            local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
-            if not gameGui then return nil end
-            local gameFolder = gameGui:FindFirstChild("Game")
-            if not gameFolder then return nil end
-            local hud = gameFolder:FindFirstChild("HUD")
-            if not hud then return nil end
-            local overlay = hud:FindFirstChild("Overlay")
-            if not overlay then return nil end
-            local roundOverlay = overlay:FindFirstChild("RoundOverlay")
-            if not roundOverlay then return nil end
-            local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
-            if not roundTimer then return nil end
-            local ingameRoundTimer = roundTimer:FindFirstChild("IngameRoundTimer")
-            if not ingameRoundTimer then return nil end
-            local timer = ingameRoundTimer:FindFirstChild("Timer")
-            if not timer then return nil end
-            return timer
-        end
-    }
+-- ========== ПОИСК ТАЙМЕРА ПО ДВУМ ПУТЯМ ==========
+local function getRoundTimer()
+    local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not gameGui then return nil end
+    local gameFolder = gameGui:FindFirstChild("Game")
+    if not gameFolder then return nil end
+    local hud = gameFolder:FindFirstChild("HUD")
+    if not hud then return nil end
+    local overlay = hud:FindFirstChild("Overlay")
+    if not overlay then return nil end
+    local roundOverlay = overlay:FindFirstChild("RoundOverlay")
+    if not roundOverlay then return nil end
+    local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
+    if not roundTimer then return nil end
+    return roundTimer
+end
+
+local function getTimerFromPath(pathType)
+    local roundTimer = getRoundTimer()
+    if not roundTimer then return nil end
     
-    for _, getPath in ipairs(paths) do
-        local timer = getPath()
-        if timer and timer:IsA("TextLabel") then
-            return timer
+    if pathType == 1 then
+        return roundTimer:FindFirstChild("Timer")
+    elseif pathType == 2 then
+        local ingame = roundTimer:FindFirstChild("IngameRoundTimer")
+        if ingame then
+            return ingame:FindFirstChild("Timer")
         end
     end
-    
     return nil
 end
 
-local timerConnection
-local currentTimerObject = nil
+local function getActiveTimer()
+    -- Проверяем первый путь: RoundTimer.Timer
+    local timer1 = getTimerFromPath(1)
+    if timer1 and timer1:IsA("TextLabel") then
+        local text = timer1.Text or ""
+        if text ~= "" and text ~= "0:00" then
+            activePath = 1
+            return timer1
+        end
+    end
+    
+    -- Проверяем второй путь: RoundTimer.IngameRoundTimer.Timer
+    local timer2 = getTimerFromPath(2)
+    if timer2 and timer2:IsA("TextLabel") then
+        local text = timer2.Text or ""
+        if text ~= "" and text ~= "0:00" then
+            activePath = 2
+            return timer2
+        end
+    end
+    
+    -- Если оба пути есть, но время не идет, проверяем первый снова
+    if timer1 and timer1:IsA("TextLabel") then
+        activePath = 1
+        return timer1
+    end
+    
+    activePath = 0
+    return nil
+end
 
 local function updateTimerDisplay()
-    local timerObject = getTimerObject()
+    local timerObject = getActiveTimer()
     
-    if timerObject then
+    if timerObject and timerObject:IsA("TextLabel") then
         -- Таймер найден
+        MainInterface.Visible = true
         TimerContainer.Visible = true
         
         local function updateText()
-            local text = timerObject.Text or "0:00"
+            local text = timerObject.Text or "JOIN GAME"
             if text ~= "" then
                 TimerLabel.Text = text
                 TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
             else
-                TimerLabel.Text = "0:00"
+                TimerLabel.Text = "JOIN GAME"
                 TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
             end
         end
@@ -303,10 +325,19 @@ local function updateTimerDisplay()
         end
         
         currentTimerObject = timerObject
-        timerConnection = timerObject:GetPropertyChangedSignal("Text"):Connect(updateText)
+        timerConnection = timerObject:GetPropertyChangedSignal("Text"):Connect(function()
+            -- При изменении текста проверяем активный путь
+            local newTimer = getActiveTimer()
+            if newTimer and newTimer ~= currentTimerObject then
+                updateTimerDisplay()
+            else
+                updateText()
+            end
+        end)
         
     else
-        -- Таймера нет
+        -- Таймера нет или время не идет
+        MainInterface.Visible = true
         TimerContainer.Visible = true
         TimerLabel.Text = "JOIN GAME"
         TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -316,16 +347,43 @@ local function updateTimerDisplay()
             timerConnection = nil
         end
         currentTimerObject = nil
+        activePath = 0
     end
 end
 
 -- ========== ЗАПУСК ==========
+task.wait(1)
 updateTimerDisplay()
 
 -- Следим за появлением таймера
 local descendantConnection
 descendantConnection = LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
     if descendant.Name == "Timer" and descendant:IsA("TextLabel") then
+        task.wait(0.5)
+        updateTimerDisplay()
+    end
+end)
+
+-- Также следим за изменением текста у обоих таймеров
+local function checkBothTimers()
+    local timer1 = getTimerFromPath(1)
+    local timer2 = getTimerFromPath(2)
+    
+    if timer1 and timer1:IsA("TextLabel") then
+        if not timerConnection or currentTimerObject ~= timer1 then
+            updateTimerDisplay()
+        end
+    elseif timer2 and timer2:IsA("TextLabel") then
+        if not timerConnection or currentTimerObject ~= timer2 then
+            updateTimerDisplay()
+        end
+    end
+end
+
+-- Проверяем каждые 2 секунды, не появилось ли время
+local checkLoop
+checkLoop = game:GetService("RunService").Heartbeat:Connect(function()
+    if not currentTimerObject then
         updateTimerDisplay()
     end
 end)
@@ -342,6 +400,10 @@ local function cleanupTimer()
     if backgroundAnimation then
         backgroundAnimation:Disconnect()
         backgroundAnimation = nil
+    end
+    if checkLoop then
+        checkLoop:Disconnect()
+        checkLoop = nil
     end
 end
 
