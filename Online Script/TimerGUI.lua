@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local UserInputService = game:GetService("UserInputService")
 
 local function CreateTimerGUI()
     local MainInterface = Instance.new("ScreenGui")
@@ -27,6 +28,7 @@ local function CreateTimerGUI()
     MainInterface.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     MainInterface.Enabled = true
     MainInterface.DisplayOrder = 2
+    
     TimerContainer.Name = "TimerContainer"
     TimerContainer.Parent = MainInterface
     TimerContainer.AnchorPoint = Vector2.new(0.5, 0)
@@ -66,7 +68,7 @@ local function CreateTimerGUI()
     BackgroundFrame.Parent = TimerDisplay
     BackgroundFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     BackgroundFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    BackgroundFrame.BackgroundTransparency = 0
+    BackgroundFrame.BackgroundTransparency = 0.7
     BackgroundFrame.BorderSizePixel = 0
     BackgroundFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     BackgroundFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -171,12 +173,55 @@ local function CreateTimerGUI()
     CountdownBorder.Color = Color3.fromRGB(255, 255, 255)
     CountdownBorder.Transparency = 0.7
 
+    -- ========== ПЕРЕТАСКИВАНИЕ ==========
+    local dragging = false
+    local dragInput = nil
+    local dragStart = nil
+    local startPos = nil
+    
+    local function updatePosition(input)
+        local delta = input.Position - dragStart
+        TimerContainer.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+    
+    TimerDisplay.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = TimerContainer.Position
+            
+            local connection
+            connection = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    connection:Disconnect()
+                end
+            end)
+        end
+    end)
+    
+    TimerDisplay.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input == dragInput or input.UserInputType == Enum.UserInputType.Touch) then
+            updatePosition(input)
+        end
+    end)
+
     return CountdownText, StatusText, MainInterface, TimerContainer, backgroundAnimation
 end
 
 local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
 
--- НОВЫЙ ПУТЬ: отслеживаем Text в RoundTimer
 local function getTimerText()
     local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
     if not gameGui then return nil end
@@ -211,13 +256,7 @@ local function setupTimerConnection()
         local function updateTimer()
             local text = timerObject.Text or "0:00"
             TimerLabel.Text = text
-            
-            local seconds = tonumber(text:match("(%d+)"))
-            if seconds and seconds <= 5 then
-                TimerLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            else
-                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            end
+            TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
         
         updateTimer()
@@ -230,7 +269,6 @@ end
 
 setupTimerConnection()
 
--- Следим за появлением Timer
 local childAddedConnection
 childAddedConnection = LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
     if descendant.Name == "Timer" and descendant:IsA("TextLabel") then
