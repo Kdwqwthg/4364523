@@ -1,23 +1,12 @@
---22
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local UserInputService = game:GetService("UserInputService")
 
-local TimerLabel = nil
-local StatusLabel = nil
-local MainInterface = nil
-local TimerContainer = nil
-local backgroundAnimation = nil
-local timerConnection = nil
-local currentTimerObject = nil
-local activePath = nil
-
--- ========== СОЗДАНИЕ GUI ==========
 local function CreateTimerGUI()
-    MainInterface = Instance.new("ScreenGui")
-    TimerContainer = Instance.new("Frame")
+    local MainInterface = Instance.new("ScreenGui")
+    local TimerContainer = Instance.new("Frame")
     local AspectRatio = Instance.new("UIAspectRatioConstraint")
     local SizeLimit = Instance.new("UISizeConstraint")
     local TimerDisplay = Instance.new("Frame")
@@ -39,7 +28,6 @@ local function CreateTimerGUI()
     MainInterface.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     MainInterface.Enabled = true
     MainInterface.DisplayOrder = 2
-    MainInterface.Visible = true
     
     TimerContainer.Name = "TimerContainer"
     TimerContainer.Parent = MainInterface
@@ -49,9 +37,10 @@ local function CreateTimerGUI()
     TimerContainer.BorderColor3 = Color3.fromRGB(27, 42, 53)
     TimerContainer.Position = UDim2.new(0.5, 0, 0, 0)
     TimerContainer.Size = UDim2.new(1, 0, 1, 0)
-    TimerContainer.Visible = true
+    TimerContainer.Visible = false
 
     AspectRatio.Parent = TimerContainer
+
     SizeLimit.Parent = TimerContainer
     SizeLimit.MaxSize = Vector2.new(900, 900)
 
@@ -98,6 +87,7 @@ local function CreateTimerGUI()
     BackgroundGradient.Rotation = 0
     BackgroundGradient.Parent = BackgroundFrame
     
+    local backgroundAnimation
     backgroundAnimation = RunService.RenderStepped:Connect(function(delta)
         BackgroundGradient.Rotation = (BackgroundGradient.Rotation + 90 * delta) % 360
     end)
@@ -167,7 +157,7 @@ local function CreateTimerGUI()
     CountdownText.Size = UDim2.new(0.9, 0, 0.5, 0)
     CountdownText.ZIndex = 10002
     CountdownText.Font = Enum.Font.GothamBold
-    CountdownText.Text = "JOIN GAME"
+    CountdownText.Text = "0:00"
     CountdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
     CountdownText.TextScaled = true
     CountdownText.TextSize = 14.000
@@ -182,9 +172,6 @@ local function CreateTimerGUI()
     CountdownBorder.Thickness = 1
     CountdownBorder.Color = Color3.fromRGB(255, 255, 255)
     CountdownBorder.Transparency = 0.7
-
-    TimerLabel = CountdownText
-    StatusLabel = StatusText
 
     -- ========== ПЕРЕТАСКИВАНИЕ ==========
     local dragging = false
@@ -230,202 +217,191 @@ local function CreateTimerGUI()
         end
     end)
 
-    return CountdownText, StatusText, MainInterface, TimerContainer
+    return CountdownText, StatusText, MainInterface, TimerContainer, backgroundAnimation
 end
 
-CreateTimerGUI()
+local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
 
--- ========== ПОИСК ТАЙМЕРА ПО ДВУМ ПУТЯМ ==========
-local function getRoundTimer()
+-- Функция для получения всех доступных таймеров
+local function getAllTimers()
+    local timers = {}
     local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not gameGui then return nil end
+    if not gameGui then return timers end
+    
     local gameFolder = gameGui:FindFirstChild("Game")
-    if not gameFolder then return nil end
+    if not gameFolder then return timers end
+    
     local hud = gameFolder:FindFirstChild("HUD")
-    if not hud then return nil end
+    if not hud then return timers end
+    
     local overlay = hud:FindFirstChild("Overlay")
-    if not overlay then return nil end
+    if not overlay then return timers end
+    
     local roundOverlay = overlay:FindFirstChild("RoundOverlay")
-    if not roundOverlay then return nil end
+    if not roundOverlay then return timers end
+    
     local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
-    if not roundTimer then return nil end
-    return roundTimer
-end
-
-local function getTimerFromPath(pathType)
-    local roundTimer = getRoundTimer()
-    if not roundTimer then return nil end
+    if not roundTimer then return timers end
     
-    if pathType == 1 then
-        return roundTimer:FindFirstChild("Timer")
-    elseif pathType == 2 then
-        local ingame = roundTimer:FindFirstChild("IngameRoundTimer")
-        if ingame then
-            return ingame:FindFirstChild("Timer")
+    -- Проверяем первый путь: RoundTimer.RoundTimer.Timer
+    local roundTimerInner = roundTimer:FindFirstChild("RoundTimer")
+    if roundTimerInner then
+        local timer = roundTimerInner:FindFirstChild("Timer")
+        if timer and timer:IsA("TextLabel") then
+            table.insert(timers, {object = timer, path = "RoundTimer"})
         end
     end
-    return nil
+    
+    -- Проверяем второй путь: RoundTimer.IngameRoundTimer.Timer
+    local ingameRoundTimer = roundTimer:FindFirstChild("IngameRoundTimer")
+    if ingameRoundTimer then
+        local timer = ingameRoundTimer:FindFirstChild("Timer")
+        if timer and timer:IsA("TextLabel") then
+            table.insert(timers, {object = timer, path = "IngameRoundTimer"})
+        end
+    end
+    
+    return timers
 end
 
+-- Функция для проверки, активен ли таймер (показывает время)
+local lastTexts = {}
+local function isTimerActive(timerObject)
+    if not timerObject then return false end
+    local text = timerObject.Text or ""
+    
+    -- Если текст пустой или показывает только нули - не активен
+    if text == "" or text == "0:00" or text == "00:00" or text == "0:00.0" or text == "00:00.0" then
+        return false
+    end
+    
+    -- Проверяем, меняется ли текст (для этого храним предыдущие значения)
+    local timerKey = tostring(timerObject)
+    if not lastTexts[timerKey] then
+        lastTexts[timerKey] = text
+        return true -- Если видим впервые, считаем активным
+    end
+    
+    -- Если текст изменился - таймер активен
+    if lastTexts[timerKey] ~= text then
+        lastTexts[timerKey] = text
+        return true
+    end
+    
+    -- Если текст не меняется, проверяем прошло ли достаточно времени
+    -- Если текст не меняется более 1 секунды, считаем неактивным
+    return true
+end
+
+-- Функция для получения активного таймера
 local function getActiveTimer()
-    local timer1 = getTimerFromPath(1)
-    if timer1 and timer1:IsA("TextLabel") then
-        local text = timer1.Text or ""
-        if text ~= "" and text ~= "0:00" then
-            activePath = 1
-            return timer1
+    local timers = getAllTimers()
+    
+    -- Сначала проверяем первый путь (RoundTimer)
+    for _, timerData in ipairs(timers) do
+        if timerData.path == "RoundTimer" then
+            if isTimerActive(timerData.object) then
+                return timerData.object
+            end
         end
     end
     
-    local timer2 = getTimerFromPath(2)
-    if timer2 and timer2:IsA("TextLabel") then
-        local text = timer2.Text or ""
-        if text ~= "" and text ~= "0:00" then
-            activePath = 2
-            return timer2
+    -- Если первый не активен, проверяем второй (IngameRoundTimer)
+    for _, timerData in ipairs(timers) do
+        if timerData.path == "IngameRoundTimer" then
+            if isTimerActive(timerData.object) then
+                return timerData.object
+            end
         end
     end
     
-    if timer1 and timer1:IsA("TextLabel") then
-        activePath = 1
-        return timer1
-    end
-    
-    activePath = 0
+    -- Если оба не активны или не существуют, возвращаем nil
     return nil
 end
+
+local timerConnection
+local currentTimerObject = nil
+local checkInterval = nil
+local lastUpdateTime = tick()
 
 local function updateTimerDisplay()
-    local timerObject = getActiveTimer()
+    local activeTimer = getActiveTimer()
     
-    if timerObject and timerObject:IsA("TextLabel") then
-        MainInterface.Visible = true
-        TimerContainer.Visible = true
-        
-        local function updateText()
-            local text = timerObject.Text or "JOIN GAME"
-            if text ~= "" then
-                TimerLabel.Text = text
-                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            else
+    if activeTimer then
+        -- Если нашли активный таймер
+        if currentTimerObject ~= activeTimer then
+            -- Отключаем старую связь если есть
+            if timerConnection then
+                timerConnection:Disconnect()
+                timerConnection = nil
+            end
+            currentTimerObject = activeTimer
+            TimerContainer.Visible = true
+            
+            local function updateTimer()
+                local text = activeTimer.Text or "0:00"
+                -- Проверяем, что текст действительно изменился и это не нули
+                if text ~= "0:00" and text ~= "00:00" and text ~= "0:00.0" and text ~= "00:00.0" and text ~= "" then
+                    TimerLabel.Text = text
+                    TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    StatusLabel.Text = "ROUND ACTIVE"
+                    lastUpdateTime = tick()
+                else
+                    -- Если таймер показывает нули, проверяем через проверку
+                    TimerLabel.Text = text
+                end
+            end
+            
+            updateTimer()
+            timerConnection = activeTimer:GetPropertyChangedSignal("Text"):Connect(updateTimer)
+        else
+            -- Проверяем, не завис ли текущий таймер
+            local currentText = activeTimer.Text or ""
+            if currentText == "0:00" or currentText == "00:00" or currentText == "0:00.0" or currentText == "00:00.0" or currentText == "" then
+                -- Если показывает нули, сбрасываем
+                if currentTimerObject then
+                    if timerConnection then
+                        timerConnection:Disconnect()
+                        timerConnection = nil
+                    end
+                    currentTimerObject = nil
+                end
+                TimerContainer.Visible = false
                 TimerLabel.Text = "JOIN GAME"
-                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                StatusLabel.Text = "WAITING"
             end
         end
-        
-        updateText()
-        
-        if timerConnection then
-            timerConnection:Disconnect()
-            timerConnection = nil
-        end
-        
-        currentTimerObject = timerObject
-        timerConnection = timerObject:GetPropertyChangedSignal("Text"):Connect(function()
-            local newTimer = getActiveTimer()
-            if newTimer and newTimer ~= currentTimerObject then
-                updateTimerDisplay()
-            else
-                updateText()
-            end
-        end)
-        
     else
-        MainInterface.Visible = true
-        TimerContainer.Visible = true
-        TimerLabel.Text = "JOIN GAME"
-        TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        
-        if timerConnection then
-            timerConnection:Disconnect()
-            timerConnection = nil
+        -- Нет активных таймеров
+        if currentTimerObject then
+            if timerConnection then
+                timerConnection:Disconnect()
+                timerConnection = nil
+            end
+            currentTimerObject = nil
         end
-        currentTimerObject = nil
-        activePath = 0
+        TimerContainer.Visible = false
+        TimerLabel.Text = "JOIN GAME"
+        StatusLabel.Text = "WAITING"
     end
 end
 
--- ========== ЗАПУСК ==========
-task.wait(1)
+-- Периодическая проверка на случай, если таймеры меняют состояние
+checkInterval = RunService.RenderStepped:Connect(function()
+    updateTimerDisplay()
+end)
+
+-- Первоначальная настройка
 updateTimerDisplay()
 
-local descendantConnection
-descendantConnection = LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
+-- Отслеживаем появление новых таймеров
+local childAddedConnection
+childAddedConnection = LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
     if descendant.Name == "Timer" and descendant:IsA("TextLabel") then
-        task.wait(0.5)
-        updateTimerDisplay()
-    end
-end)
-
-local function checkBothTimers()
-    local timer1 = getTimerFromPath(1)
-    local timer2 = getTimerFromPath(2)
-    
-    if timer1 and timer1:IsA("TextLabel") then
-        if not timerConnection or currentTimerObject ~= timer1 then
+        local parent = descendant.Parent
+        if parent and (parent.Name == "RoundTimer" or parent.Name == "IngameRoundTimer") then
             updateTimerDisplay()
         end
-    elseif timer2 and timer2:IsA("TextLabel") then
-        if not timerConnection or currentTimerObject ~= timer2 then
-            updateTimerDisplay()
-        end
-    end
-end
-
-local checkLoop
-checkLoop = game:GetService("RunService").Heartbeat:Connect(function()
-    if not currentTimerObject then
-        updateTimerDisplay()
-    end
-end)
-
--- ========== ТУМБЛЕР ДЛЯ ТАЙМЕРА ==========
-local TimerDisplayToggle = Tabs.Main:AddToggle("TimerDisplayToggle", {
-    Title = "Show Timer",
-    Default = false
-})
-
-TimerDisplayToggle:OnChanged(function(state)
-    if state then
-        if MainInterface then
-            MainInterface.Enabled = true
-            MainInterface.Visible = true
-        end
-        if TimerContainer then
-            TimerContainer.Visible = true
-        end
-        updateTimerDisplay()
-        
-        if not checkLoop then
-            checkLoop = game:GetService("RunService").Heartbeat:Connect(function()
-                if not currentTimerObject then
-                    updateTimerDisplay()
-                end
-            end)
-        end
-        
-        Fluent:Notify({
-            Title = "Timer",
-            Content = "Timer Enabled",
-            Duration = 2
-        })
-    else
-        if MainInterface then
-            MainInterface.Enabled = false
-            MainInterface.Visible = false
-        end
-        if TimerContainer then
-            TimerContainer.Visible = false
-        end
-        if checkLoop then
-            checkLoop:Disconnect()
-            checkLoop = nil
-        end
-        Fluent:Notify({
-            Title = "Timer",
-            Content = "Timer Disabled",
-            Duration = 2
-        })
     end
 end)
 
@@ -434,18 +410,19 @@ local function cleanupTimer()
         timerConnection:Disconnect()
         timerConnection = nil
     end
-    if descendantConnection then
-        descendantConnection:Disconnect()
-        descendantConnection = nil
+    if childAddedConnection then
+        childAddedConnection:Disconnect()
+        childAddedConnection = nil
     end
     if backgroundAnimation then
         backgroundAnimation:Disconnect()
         backgroundAnimation = nil
     end
-    if checkLoop then
-        checkLoop:Disconnect()
-        checkLoop = nil
+    if checkInterval then
+        checkInterval:Disconnect()
+        checkInterval = nil
     end
+    currentTimerObject = nil
 end
 
 TimerContainer.Destroying:Connect(function()
@@ -453,17 +430,8 @@ TimerContainer.Destroying:Connect(function()
         backgroundAnimation:Disconnect()
         backgroundAnimation = nil
     end
+    if checkInterval then
+        checkInterval:Disconnect()
+        checkInterval = nil
+    end
 end)
-
--- Применяем начальное состояние
-task.wait(0.5)
-if TimerDisplayToggle.Value then
-    if MainInterface then
-        MainInterface.Enabled = true
-        MainInterface.Visible = true
-    end
-    if TimerContainer then
-        TimerContainer.Visible = true
-    end
-    updateTimerDisplay()
-end
