@@ -1,4 +1,3 @@
---23
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -223,135 +222,57 @@ end
 
 local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
 
--- Функция для получения всех доступных таймеров
-local function getAllTimers()
-    local timers = {}
+local function getTimerText()
     local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not gameGui then return timers end
-    
+    if not gameGui then return nil end
     local gameFolder = gameGui:FindFirstChild("Game")
-    if not gameFolder then return timers end
-    
+    if not gameFolder then return nil end
     local hud = gameFolder:FindFirstChild("HUD")
-    if not hud then return timers end
-    
+    if not hud then return nil end
     local overlay = hud:FindFirstChild("Overlay")
-    if not overlay then return timers end
-    
+    if not overlay then return nil end
     local roundOverlay = overlay:FindFirstChild("RoundOverlay")
-    if not roundOverlay then return timers end
-    
+    if not roundOverlay then return nil end
     local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
-    if not roundTimer then return timers end
-    
-    -- Проверяем первый путь: RoundTimer.RoundTimer.Timer
-    local roundTimerInner = roundTimer:FindFirstChild("RoundTimer")
-    if roundTimerInner then
-        local timer = roundTimerInner:FindFirstChild("Timer")
-        if timer and timer:IsA("TextLabel") then
-            table.insert(timers, {object = timer, path = "RoundTimer"})
-        end
-    end
-    
-    -- Проверяем второй путь: RoundTimer.IngameRoundTimer.Timer
+    if not roundTimer then return nil end
     local ingameRoundTimer = roundTimer:FindFirstChild("IngameRoundTimer")
-    if ingameRoundTimer then
-        local timer = ingameRoundTimer:FindFirstChild("Timer")
-        if timer and timer:IsA("TextLabel") then
-            table.insert(timers, {object = timer, path = "IngameRoundTimer"})
-        end
-    end
-    
-    return timers
-end
-
--- Функция для проверки, показывает ли таймер время (не нули)
-local function isTimerShowingTime(timerObject)
-    if not timerObject then return false end
-    local text = timerObject.Text or ""
-    
-    -- Проверяем, что текст не пустой и не показывает нули
-    if text == "" or text == "0:00" or text == "00:00" or text == "0:00.0" or text == "00:00.0" then
-        return false
-    end
-    
-    return true
-end
-
--- Функция для получения первого активного таймера (который показывает время)
-local function getActiveTimer()
-    local timers = getAllTimers()
-    
-    -- Проверяем все таймеры по порядку
-    for _, timerData in ipairs(timers) do
-        if isTimerShowingTime(timerData.object) then
-            return timerData.object
-        end
-    end
-    
-    -- Если ни один таймер не показывает время
-    return nil
+    if not ingameRoundTimer then return nil end
+    local timer = ingameRoundTimer:FindFirstChild("Timer")
+    if not timer then return nil end
+    return timer
 end
 
 local timerConnection
-local currentTimerObject = nil
-local checkInterval = nil
 
-local function updateTimerDisplay()
-    local activeTimer = getActiveTimer()
-    
-    if activeTimer then
-        -- Нашли таймер, который показывает время
-        if currentTimerObject ~= activeTimer then
-            -- Отключаем старую связь если есть
-            if timerConnection then
-                timerConnection:Disconnect()
-                timerConnection = nil
-            end
-            currentTimerObject = activeTimer
-            TimerContainer.Visible = true
-            
-            local function updateTimer()
-                local text = activeTimer.Text or "0:00"
-                TimerLabel.Text = text
-                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                StatusLabel.Text = "ROUND ACTIVE"
-            end
-            
-            updateTimer()
-            timerConnection = activeTimer:GetPropertyChangedSignal("Text"):Connect(updateTimer)
+local function setupTimerConnection()
+    if timerConnection then
+        timerConnection:Disconnect()
+    end
+
+    local timerObject = getTimerText()
+    if timerObject then
+        TimerContainer.Visible = true
+        
+        local function updateTimer()
+            local text = timerObject.Text or "0:00"
+            TimerLabel.Text = text
+            TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
+        
+        updateTimer()
+        
+        timerConnection = timerObject:GetPropertyChangedSignal("Text"):Connect(updateTimer)
     else
-        -- Нет таймеров, показывающих время
-        if currentTimerObject then
-            if timerConnection then
-                timerConnection:Disconnect()
-                timerConnection = nil
-            end
-            currentTimerObject = nil
-        end
         TimerContainer.Visible = false
-        TimerLabel.Text = "JOIN GAME"
-        StatusLabel.Text = "WAITING"
     end
 end
 
--- Периодическая проверка на случай, если таймеры меняют состояние
-checkInterval = RunService.RenderStepped:Connect(function()
-    updateTimerDisplay()
-end)
+setupTimerConnection()
 
--- Первоначальная настройка
-updateTimerDisplay()
-
--- Отслеживаем появление новых таймеров
 local childAddedConnection
 childAddedConnection = LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
     if descendant.Name == "Timer" and descendant:IsA("TextLabel") then
-        local parent = descendant.Parent
-        if parent and (parent.Name == "RoundTimer" or parent.Name == "IngameRoundTimer") then
-            updateTimerDisplay()
-        end
+        setupTimerConnection()
     end
 end)
 
@@ -368,23 +289,11 @@ local function cleanupTimer()
         backgroundAnimation:Disconnect()
         backgroundAnimation = nil
     end
-    if checkInterval then
-        checkInterval:Disconnect()
-        checkInterval = nil
-    end
-    currentTimerObject = nil
 end
 
--- Исправленный обработчик уничтожения
-MainInterface.AncestryChanged:Connect(function()
-    if not MainInterface.Parent then
-        cleanupTimer()
-    end
-end)
-
--- Также добавляем обработчик для TimerContainer
-TimerContainer.AncestryChanged:Connect(function()
-    if not TimerContainer.Parent then
-        cleanupTimer()
+TimerContainer.Destroying:Connect(function()
+    if backgroundAnimation then
+        backgroundAnimation:Disconnect()
+        backgroundAnimation = nil
     end
 end)
