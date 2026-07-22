@@ -40,7 +40,6 @@ local function CreateTimerGUI()
     TimerContainer.Visible = false
 
     AspectRatio.Parent = TimerContainer
-
     SizeLimit.Parent = TimerContainer
     SizeLimit.MaxSize = Vector2.new(900, 900)
 
@@ -157,7 +156,7 @@ local function CreateTimerGUI()
     CountdownText.Size = UDim2.new(0.9, 0, 0.5, 0)
     CountdownText.ZIndex = 10002
     CountdownText.Font = Enum.Font.GothamBold
-    CountdownText.Text = "0:00"
+    CountdownText.Text = "JOIN GAME"
     CountdownText.TextColor3 = Color3.fromRGB(255, 255, 255)
     CountdownText.TextScaled = true
     CountdownText.TextSize = 14.000
@@ -222,57 +221,112 @@ end
 
 local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
 
-local function getTimerText()
-    local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not gameGui then return nil end
-    local gameFolder = gameGui:FindFirstChild("Game")
-    if not gameFolder then return nil end
-    local hud = gameFolder:FindFirstChild("HUD")
-    if not hud then return nil end
-    local overlay = hud:FindFirstChild("Overlay")
-    if not overlay then return nil end
-    local roundOverlay = overlay:FindFirstChild("RoundOverlay")
-    if not roundOverlay then return nil end
-    local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
-    if not roundTimer then return nil end
-    local ingameRoundTimer = roundTimer:FindFirstChild("IngameRoundTimer")
-    if not ingameRoundTimer then return nil end
-    local timer = ingameRoundTimer:FindFirstChild("Timer")
-    if not timer then return nil end
-    return timer
+-- ========== ПОИСК ТАЙМЕРА ПО НЕСКОЛЬКИМ ПУТЯМ ==========
+local function getTimerObject()
+    local paths = {
+        -- Путь 1: RoundTimer.Timer
+        function()
+            local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if not gameGui then return nil end
+            local gameFolder = gameGui:FindFirstChild("Game")
+            if not gameFolder then return nil end
+            local hud = gameFolder:FindFirstChild("HUD")
+            if not hud then return nil end
+            local overlay = hud:FindFirstChild("Overlay")
+            if not overlay then return nil end
+            local roundOverlay = overlay:FindFirstChild("RoundOverlay")
+            if not roundOverlay then return nil end
+            local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
+            if not roundTimer then return nil end
+            local timer = roundTimer:FindFirstChild("Timer")
+            if not timer then return nil end
+            return timer
+        end,
+        -- Путь 2: IngameRoundTimer.Timer
+        function()
+            local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if not gameGui then return nil end
+            local gameFolder = gameGui:FindFirstChild("Game")
+            if not gameFolder then return nil end
+            local hud = gameFolder:FindFirstChild("HUD")
+            if not hud then return nil end
+            local overlay = hud:FindFirstChild("Overlay")
+            if not overlay then return nil end
+            local roundOverlay = overlay:FindFirstChild("RoundOverlay")
+            if not roundOverlay then return nil end
+            local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
+            if not roundTimer then return nil end
+            local ingameRoundTimer = roundTimer:FindFirstChild("IngameRoundTimer")
+            if not ingameRoundTimer then return nil end
+            local timer = ingameRoundTimer:FindFirstChild("Timer")
+            if not timer then return nil end
+            return timer
+        end
+    }
+    
+    for _, getPath in ipairs(paths) do
+        local timer = getPath()
+        if timer and timer:IsA("TextLabel") then
+            return timer
+        end
+    end
+    
+    return nil
 end
 
 local timerConnection
+local currentTimerObject = nil
 
-local function setupTimerConnection()
-    if timerConnection then
-        timerConnection:Disconnect()
-    end
-
-    local timerObject = getTimerText()
+local function updateTimerDisplay()
+    local timerObject = getTimerObject()
+    
     if timerObject then
+        -- Таймер найден
         TimerContainer.Visible = true
         
-        local function updateTimer()
+        local function updateText()
             local text = timerObject.Text or "0:00"
-            TimerLabel.Text = text
-            TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            if text ~= "" then
+                TimerLabel.Text = text
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                TimerLabel.Text = "0:00"
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            end
         end
         
-        updateTimer()
+        updateText()
         
-        timerConnection = timerObject:GetPropertyChangedSignal("Text"):Connect(updateTimer)
+        if timerConnection then
+            timerConnection:Disconnect()
+            timerConnection = nil
+        end
+        
+        currentTimerObject = timerObject
+        timerConnection = timerObject:GetPropertyChangedSignal("Text"):Connect(updateText)
+        
     else
-        TimerContainer.Visible = false
+        -- Таймера нет
+        TimerContainer.Visible = true
+        TimerLabel.Text = "JOIN GAME"
+        TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        
+        if timerConnection then
+            timerConnection:Disconnect()
+            timerConnection = nil
+        end
+        currentTimerObject = nil
     end
 end
 
-setupTimerConnection()
+-- ========== ЗАПУСК ==========
+updateTimerDisplay()
 
-local childAddedConnection
-childAddedConnection = LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
+-- Следим за появлением таймера
+local descendantConnection
+descendantConnection = LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
     if descendant.Name == "Timer" and descendant:IsA("TextLabel") then
-        setupTimerConnection()
+        updateTimerDisplay()
     end
 end)
 
@@ -281,9 +335,9 @@ local function cleanupTimer()
         timerConnection:Disconnect()
         timerConnection = nil
     end
-    if childAddedConnection then
-        childAddedConnection:Disconnect()
-        childAddedConnection = nil
+    if descendantConnection then
+        descendantConnection:Disconnect()
+        descendantConnection = nil
     end
     if backgroundAnimation then
         backgroundAnimation:Disconnect()
