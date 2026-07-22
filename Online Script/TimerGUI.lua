@@ -45,9 +45,8 @@ local function CreateTimerGUI()
     TimerDisplay.Name = "TimerDisplay"
     TimerDisplay.Parent = TimerContainer
     TimerDisplay.AnchorPoint = Vector2.new(0.5, 0.5)
-    -- ИЗМЕНЕНО: Убираем черный цвет фона и делаем фон прозрачным для градиента
     TimerDisplay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    TimerDisplay.BackgroundTransparency = 1.000  -- Полностью прозрачный
+    TimerDisplay.BackgroundTransparency = 1.000
     TimerDisplay.BorderColor3 = Color3.fromRGB(27, 42, 53)
     TimerDisplay.BorderSizePixel = 0
     TimerDisplay.Position = UDim2.new(0.5, 0, 0.1, 0)
@@ -57,39 +56,35 @@ local function CreateTimerGUI()
     RoundedCorners.CornerRadius = UDim.new(0, 12)
     RoundedCorners.Parent = TimerDisplay
 
-    -- Обновленный контур: темно-красный как у Draconic Hub
     BorderOutline.Parent = TimerDisplay
     BorderOutline.Thickness = 2
-    BorderOutline.Color = Color3.fromRGB(139, 0, 0)  -- Темно-красный
+    BorderOutline.Color = Color3.fromRGB(139, 0, 0)
     BorderOutline.Transparency = 0.1
 
-    -- СОЗДАЕМ градиентный фон вместо черного
     local BackgroundFrame = Instance.new("Frame")
     BackgroundFrame.Name = "BackgroundFrame"
     BackgroundFrame.Parent = TimerDisplay
     BackgroundFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     BackgroundFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    BackgroundFrame.BackgroundTransparency = 0  -- Полупрозрачный как у кнопок
+    BackgroundFrame.BackgroundTransparency = 0
     BackgroundFrame.BorderSizePixel = 0
     BackgroundFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     BackgroundFrame.Size = UDim2.new(1, 0, 1, 0)
-    BackgroundFrame.ZIndex = 9998  -- Ниже, чем основной контейнер
+    BackgroundFrame.ZIndex = 9998
     
     local BackgroundCorner = Instance.new("UICorner")
     BackgroundCorner.CornerRadius = UDim.new(0, 12)
     BackgroundCorner.Parent = BackgroundFrame
     
-    -- Градиент для фона (красный-черный-красный)
     local BackgroundGradient = Instance.new("UIGradient")
     BackgroundGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(139, 0, 0)),      -- Красный
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),     -- Черный
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(139, 0, 0))      -- Красный
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(139, 0, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(139, 0, 0))
     }
     BackgroundGradient.Rotation = 0
     BackgroundGradient.Parent = BackgroundFrame
     
-    -- Анимация вращения градиента
     local backgroundAnimation
     backgroundAnimation = RunService.RenderStepped:Connect(function(delta)
         BackgroundGradient.Rotation = (BackgroundGradient.Rotation + 90 * delta) % 360
@@ -181,53 +176,64 @@ end
 
 local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
 
-local statsFolder = workspace:WaitForChild("Game"):WaitForChild("Stats")
+-- НОВЫЙ ПУТЬ: отслеживаем Text в RoundTimer
+local function getTimerText()
+    local gameGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not gameGui then return nil end
+    local gameFolder = gameGui:FindFirstChild("Game")
+    if not gameFolder then return nil end
+    local hud = gameFolder:FindFirstChild("HUD")
+    if not hud then return nil end
+    local overlay = hud:FindFirstChild("Overlay")
+    if not overlay then return nil end
+    local roundOverlay = overlay:FindFirstChild("RoundOverlay")
+    if not roundOverlay then return nil end
+    local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
+    if not roundTimer then return nil end
+    local ingameRoundTimer = roundTimer:FindFirstChild("IngameRoundTimer")
+    if not ingameRoundTimer then return nil end
+    local timer = ingameRoundTimer:FindFirstChild("Timer")
+    if not timer then return nil end
+    return timer
+end
 
 local timerConnection
-
-local function formatTime(seconds)
-    if not seconds then return "0:00" end
-
-    seconds = math.floor(tonumber(seconds) or 0)
-    local minutes = math.floor(seconds / 60)
-    local remainingSeconds = seconds % 60
-
-    return string.format("%d:%02d", minutes, remainingSeconds)
-end
 
 local function setupTimerConnection()
     if timerConnection then
         timerConnection:Disconnect()
     end
 
-    if statsFolder then
-        timerConnection = statsFolder:GetAttributeChangedSignal("Timer"):Connect(function()
-            local timerValue = statsFolder:GetAttribute("Timer")
-            local roundStarted = statsFolder:GetAttribute("RoundStarted")
-
-            TimerLabel.Text = formatTime(timerValue)
-
-            TimerLabel.TextColor3 = timerValue and timerValue <= 5 and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(255, 255, 255)
-
-            StatusLabel.Text = roundStarted and "ROUND ACTIVE" or "INTERMISSION"
-        end)
-
-        local initialTimer = statsFolder:GetAttribute("Timer")
-        local initialRoundStarted = statsFolder:GetAttribute("RoundStarted")
-
-        TimerLabel.Text = formatTime(initialTimer)
-        TimerLabel.TextColor3 = initialTimer and initialTimer <= 5 and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(255, 255, 255)
-        StatusLabel.Text = initialRoundStarted and "ROUND ACTIVE" or "INTERMISSION"
+    local timerObject = getTimerText()
+    if timerObject then
+        TimerContainer.Visible = true
+        
+        local function updateTimer()
+            local text = timerObject.Text or "0:00"
+            TimerLabel.Text = text
+            
+            local seconds = tonumber(text:match("(%d+)"))
+            if seconds and seconds <= 5 then
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            else
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            end
+        end
+        
+        updateTimer()
+        
+        timerConnection = timerObject:GetPropertyChangedSignal("Text"):Connect(updateTimer)
+    else
+        TimerContainer.Visible = false
     end
 end
 
 setupTimerConnection()
 
-local folderAddedConnection
-folderAddedConnection = workspace.ChildAdded:Connect(function(child)
-    if child.Name == "Game" then
-        local gameFolder = child:WaitForChild("Stats")
-        statsFolder = gameFolder
+-- Следим за появлением Timer
+local childAddedConnection
+childAddedConnection = LocalPlayer.PlayerGui.DescendantAdded:Connect(function(descendant)
+    if descendant.Name == "Timer" and descendant:IsA("TextLabel") then
         setupTimerConnection()
     end
 end)
@@ -237,9 +243,9 @@ local function cleanupTimer()
         timerConnection:Disconnect()
         timerConnection = nil
     end
-    if folderAddedConnection then
-        folderAddedConnection:Disconnect()
-        folderAddedConnection = nil
+    if childAddedConnection then
+        childAddedConnection:Disconnect()
+        childAddedConnection = nil
     end
     if backgroundAnimation then
         backgroundAnimation:Disconnect()
@@ -247,7 +253,6 @@ local function cleanupTimer()
     end
 end
 
--- Автоматическая очистка анимации при удалении
 TimerContainer.Destroying:Connect(function()
     if backgroundAnimation then
         backgroundAnimation:Disconnect()
