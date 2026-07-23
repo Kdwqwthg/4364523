@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 6",
+    Title = "Draconic Hub 7",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3357,6 +3357,10 @@ local function createGradientButton(parent, position, size, text, onClickCallbac
     return button, clicker, stroke
 end
 
+-- ============================================
+-- INSTANT REVIVE (с двумя вариантами вызова)
+-- ============================================
+
 local InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
     Title = "Instant Revive",
     Default = false
@@ -3421,6 +3425,10 @@ local InstantReviveModule = (function()
                             local dist = (myHRP.Position - otherHrp.Position).Magnitude
                             if dist <= reviveRange then
                                 if InteractRemote then
+                                    -- Первый вызов: с true
+                                    InteractRemote:FireServer("Revive", otherTag, true)
+                                    task.wait(0.05)
+                                    -- Второй вызов: без true
                                     InteractRemote:FireServer("Revive", otherTag)
                                 end
                                 task.wait(0.1)
