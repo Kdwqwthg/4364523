@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 5",
+    Title = "Draconic Hub 6",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3592,15 +3592,7 @@ MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
     Title = "Auto Carry",
-    Default = false,
-    Callback = function(state)
-        featureStates.AutoCarry = state
-        if state then
-            startAutoCarry()
-        else
-            stopAutoCarry()
-        end
-    end
+    Default = false
 })
 
 CarryGUIToggle = MiscTab:AddToggle("CarryGUIToggle", {
