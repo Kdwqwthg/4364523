@@ -3358,7 +3358,7 @@ local function createGradientButton(parent, position, size, text, onClickCallbac
 end
 
 -- ============================================
--- INSTANT REVIVE (по тегам из workspace.Players)
+-- INSTANT REVIVE (по тегам из workspace.Players, без проверки Downed)
 -- ============================================
 
 local InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
@@ -3408,15 +3408,6 @@ local InstantReviveModule = (function()
         return nil
     end
 
-    local function isPlayerDowned(pl)
-        if not pl or not pl.Character then return false end
-        local char = pl.Character
-        if char:GetAttribute("Downed") then return true end
-        local hum = char:FindFirstChild("Humanoid")
-        if hum and hum.Health <= 0 then return true end
-        return false
-    end
-
     local function reviveLoop()
         while enabled do
             if isCurrentlyEmoting and not Options.ReviveWhileEmoteToggle.Value then
@@ -3445,12 +3436,7 @@ local InstantReviveModule = (function()
                         if otherHrp then
                             local dist = (myHRP.Position - otherHrp.Position).Magnitude
                             if dist <= reviveRange then
-                                -- Пробуем оба варианта
                                 if InteractRemote then
-                                    -- Вариант 1: с true
-                                    InteractRemote:FireServer("Revive", otherTag, true)
-                                    task.wait(0.05)
-                                    -- Вариант 2: без true
                                     InteractRemote:FireServer("Revive", otherTag)
                                 end
                                 task.wait(0.1)
@@ -3636,190 +3622,6 @@ InstantReviveButtonToggle:OnChanged(function(Value)
         if instantReviveButtonScreenGui then
             instantReviveButtonScreenGui:Destroy()
             instantReviveButtonScreenGui = nil
-        end
-    end
-end)
-
-MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
-
-AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
-    Title = "Auto Carry",
-    Default = false
-})
-
-CarryGUIToggle = MiscTab:AddToggle("CarryGUIToggle", {
-    Title = "Carry GUI Button",
-    Default = false
-})
-
-CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
-    Title = "Auto Carry Keybind",
-    Mode = "Toggle",
-    Default = "F3",
-    ChangedCallback = function(New)
-    end,
-    Callback = function()
-        featureStates.AutoCarry = not featureStates.AutoCarry
-        if featureStates.AutoCarry then
-            startAutoCarry()
-        else
-            stopAutoCarry()
-        end
-        if Options.AutoCarryToggle then
-            Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
-        end
-    end
-})
-
-local AutoCarryConnection = nil
-local featureStates = featureStates or {}
-local player = game:GetService("Players").LocalPlayer
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-
-local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
-
-local function isCarryingPlayer()
-    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
-    if char then
-        local carryWeld = char:FindFirstChild("CarryWeld")
-        if carryWeld then
-            return true
-        end
-    end
-    return false
-end
-
-local function startAutoCarry()
-    if AutoCarryConnection then return end
-    
-    AutoCarryConnection = RunService.Heartbeat:Connect(function()
-        if not featureStates.AutoCarry then 
-            return 
-        end
-        
-        if isCarryingPlayer() then
-            return
-        end
-        
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        
-        if hrp then
-            local playersFolder = Workspace:FindFirstChild("Players")
-            if not playersFolder then return end
-            
-            for _, otherChar in ipairs(playersFolder:GetChildren()) do
-                if otherChar.Name ~= player.Name then
-                    local otherTag = otherChar:GetAttribute("Tag")
-                    if otherTag then
-                        local otherHrp = otherChar:FindFirstChild("HumanoidRootPart")
-                        if otherHrp then
-                            local dist = (hrp.Position - otherHrp.Position).Magnitude
-                            if dist <= 20 then
-                                if InteractRemote then
-                                    InteractRemote:FireServer("Carry", otherTag)
-                                end
-                                task.wait(0.01)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
-local function stopAutoCarry()
-    if AutoCarryConnection then
-        AutoCarryConnection:Disconnect()
-        AutoCarryConnection = nil
-    end
-end
-
-local function toggleAutoCarryGUI()
-    local CoreGui = game:GetService("CoreGui")
-    local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
-    
-    if existingScreenGui then
-        existingScreenGui:Destroy()
-    else
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "AutoCarryButtonGUI"
-        screenGui.ResetOnSpawn = false
-        screenGui.Parent = CoreGui
-        
-        local buttonSize = 180
-        if Options.CarryButtonSizeInput and Options.CarryButtonSizeInput.Value and tonumber(Options.CarryButtonSizeInput.Value) then
-            buttonSize = tonumber(Options.CarryButtonSizeInput.Value)
-        end
-        
-        local btnWidth = math.max(150, math.min(buttonSize, 400))
-        local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
-        
-        local btn, clicker, stroke = createGradientButton(
-            screenGui,
-            UDim2.new(0.5, -btnWidth/2, 0.5, -btnHeight/2),
-            UDim2.new(0, btnWidth, 0, btnHeight),
-            "Auto Carry: Off"
-        )
-        
-        local function updateButtonText()
-            if btn and btn:FindFirstChild("TextLabel") then
-                btn.TextLabel.Text = featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off"
-            end
-        end
-        
-        updateButtonText()
-        
-        clicker.MouseButton1Click:Connect(function()
-            featureStates.AutoCarry = not featureStates.AutoCarry
-            updateButtonText()
-            
-            if featureStates.AutoCarry then
-                startAutoCarry()
-            else
-                stopAutoCarry()
-            end
-            
-            if Options.AutoCarryToggle then
-                Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
-            end
-        end)
-        
-        AutoCarryToggle:OnChanged(function(state)
-            featureStates.AutoCarry = state
-            updateButtonText()
-            
-            if state then
-                startAutoCarry()
-            else
-                stopAutoCarry()
-            end
-        end)
-    end
-end
-
-AutoCarryToggle:OnChanged(function(state)
-    featureStates.AutoCarry = state
-    
-    if state then
-        startAutoCarry()
-    else
-        stopAutoCarry()
-    end
-end)
-
-CarryGUIToggle:OnChanged(function(state)
-    if state then
-        toggleAutoCarryGUI()
-    else
-        local CoreGui = game:GetService("CoreGui")
-        local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
-        if existingScreenGui then
-            existingScreenGui:Destroy()
         end
     end
 end)
