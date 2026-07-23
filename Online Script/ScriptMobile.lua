@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 3",
+    Title = "Draconic Hub 4",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3357,6 +3357,10 @@ local function createGradientButton(parent, position, size, text, onClickCallbac
     return button, clicker, stroke
 end
 
+-- ============================================
+-- INSTANT REVIVE (по тегам из workspace.Players)
+-- ============================================
+
 local InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
     Title = "Instant Revive",
     Default = false
@@ -3404,31 +3408,6 @@ local InstantReviveModule = (function()
         return nil
     end
 
-    local function getPlayerByTag(tag)
-        if not tag then return nil end
-        local playersFolder = Workspace:FindFirstChild("Players")
-        if not playersFolder then return nil end
-        for _, char in ipairs(playersFolder:GetChildren()) do
-            if char:GetAttribute("Tag") == tag then
-                for _, pl in ipairs(Players:GetPlayers()) do
-                    if pl.Name == char.Name then
-                        return pl
-                    end
-                end
-            end
-        end
-        return nil
-    end
-
-    local function updateEmoteStatus()
-        if not LocalPlayer.Character then
-            isCurrentlyEmoting = false
-            return
-        end
-        local state = LocalPlayer.Character:GetAttribute("State")
-        isCurrentlyEmoting = state and string.find(state, "Emoting")
-    end
-
     local function isPlayerDowned(pl)
         if not pl or not pl.Character then return false end
         local char = pl.Character
@@ -3452,12 +3431,6 @@ local InstantReviveModule = (function()
                 continue
             end
 
-            local myTag = getPlayerTag(LocalPlayer)
-            if not myTag then
-                task.wait(loopDelay)
-                continue
-            end
-
             local playersFolder = Workspace:FindFirstChild("Players")
             if not playersFolder then
                 task.wait(loopDelay)
@@ -3472,13 +3445,15 @@ local InstantReviveModule = (function()
                         if otherHrp then
                             local dist = (myHRP.Position - otherHrp.Position).Magnitude
                             if dist <= reviveRange then
-                                local pl = getPlayerByTag(otherTag)
-                                if pl and isPlayerDowned(pl) then
-                                    if InteractRemote then
-                                        InteractRemote:FireServer("Revive", otherTag, true)
-                                    end
-                                    task.wait(0.1)
+                                -- Пробуем оба варианта
+                                if InteractRemote then
+                                    -- Вариант 1: с true
+                                    InteractRemote:FireServer("Revive", otherTag, true)
+                                    task.wait(0.05)
+                                    -- Вариант 2: без true
+                                    InteractRemote:FireServer("Revive", otherTag)
                                 end
+                                task.wait(0.1)
                             end
                         end
                     end
@@ -3487,6 +3462,15 @@ local InstantReviveModule = (function()
 
             task.wait(loopDelay)
         end
+    end
+
+    local function updateEmoteStatus()
+        if not LocalPlayer.Character then
+            isCurrentlyEmoting = false
+            return
+        end
+        local state = LocalPlayer.Character:GetAttribute("State")
+        isCurrentlyEmoting = state and string.find(state, "Emoting")
     end
 
     local function start()
