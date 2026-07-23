@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 5",
+    Title = "Draconic Hub 6",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3624,7 +3624,7 @@ end)
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
 -- ============================================
--- AUTO CARRY (по тегам из workspace.Players)
+-- AUTO CARRY (с отслеживанием, не активируется если уже несёшь)
 -- ============================================
 
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
@@ -3658,6 +3658,9 @@ local Workspace = game:GetService("Workspace")
 
 local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
 
+local isCarrying = false
+local currentCarryTag = nil
+
 local function getPlayerTag(pl)
     if not pl then return nil end
     local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(pl.Name)
@@ -3667,12 +3670,33 @@ local function getPlayerTag(pl)
     return nil
 end
 
+local function checkIfCarrying()
+    -- Проверяем, не несёт ли игрок кого-то через атрибут
+    local char = player.Character
+    if char then
+        local carrying = char:GetAttribute("Carrying")
+        if carrying and carrying ~= 0 then
+            isCarrying = true
+            currentCarryTag = carrying
+            return true
+        end
+    end
+    isCarrying = false
+    currentCarryTag = nil
+    return false
+end
+
 local function startAutoCarry()
     if AutoCarryConnection then return end
     
     AutoCarryConnection = RunService.Heartbeat:Connect(function()
         if not featureStates.AutoCarry then 
             return 
+        end
+        
+        -- Проверяем, несёт ли игрок кого-то
+        if checkIfCarrying() then
+            return -- Если несёт, пропускаем
         end
         
         local char = player.Character
@@ -3692,6 +3716,8 @@ local function startAutoCarry()
                             if dist <= 20 then
                                 if InteractRemote then
                                     InteractRemote:FireServer("Carry", otherTag)
+                                    isCarrying = true
+                                    currentCarryTag = otherTag
                                 end
                                 task.wait(0.01)
                             end
@@ -3708,6 +3734,8 @@ local function stopAutoCarry()
         AutoCarryConnection:Disconnect()
         AutoCarryConnection = nil
     end
+    isCarrying = false
+    currentCarryTag = nil
 end
 
 local function toggleAutoCarryGUI()
