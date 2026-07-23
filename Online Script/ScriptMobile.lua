@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 6",
+    Title = "Draconic Hub 7",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3624,12 +3624,20 @@ end)
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
 -- ============================================
--- AUTO CARRY (с отслеживанием, не активируется если уже несёшь)
+-- AUTO CARRY (с обработкой тумблера и кнопки)
 -- ============================================
 
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
     Title = "Auto Carry",
-    Default = false
+    Default = false,
+    Callback = function(state)
+        featureStates.AutoCarry = state
+        if state then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+    end
 })
 
 CarryGUIToggle = MiscTab:AddToggle("CarryGUIToggle", {
@@ -3644,7 +3652,15 @@ CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
     ChangedCallback = function(New)
     end,
     Callback = function()
-        Options.AutoCarryToggle:SetValue(not Options.AutoCarryToggle.Value)
+        featureStates.AutoCarry = not featureStates.AutoCarry
+        if featureStates.AutoCarry then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+        if Options.AutoCarryToggle then
+            Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
+        end
     end
 })
 
@@ -3658,31 +3674,15 @@ local Workspace = game:GetService("Workspace")
 
 local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
 
-local isCarrying = false
-local currentCarryTag = nil
-
-local function getPlayerTag(pl)
-    if not pl then return nil end
-    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(pl.Name)
+local function isCarryingPlayer()
+    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
     if char then
-        return char:GetAttribute("Tag")
-    end
-    return nil
-end
-
-local function checkIfCarrying()
-    -- Проверяем, не несёт ли игрок кого-то через атрибут
-    local char = player.Character
-    if char then
-        local carrying = char:GetAttribute("Carrying")
-        if carrying and carrying ~= 0 then
-            isCarrying = true
-            currentCarryTag = carrying
-            return true
+        for _, child in ipairs(char:GetDescendants()) do
+            if child:IsA("Weld") then
+                return true
+            end
         end
     end
-    isCarrying = false
-    currentCarryTag = nil
     return false
 end
 
@@ -3694,9 +3694,8 @@ local function startAutoCarry()
             return 
         end
         
-        -- Проверяем, несёт ли игрок кого-то
-        if checkIfCarrying() then
-            return -- Если несёт, пропускаем
+        if isCarryingPlayer() then
+            return
         end
         
         local char = player.Character
@@ -3716,8 +3715,6 @@ local function startAutoCarry()
                             if dist <= 20 then
                                 if InteractRemote then
                                     InteractRemote:FireServer("Carry", otherTag)
-                                    isCarrying = true
-                                    currentCarryTag = otherTag
                                 end
                                 task.wait(0.01)
                             end
@@ -3734,8 +3731,6 @@ local function stopAutoCarry()
         AutoCarryConnection:Disconnect()
         AutoCarryConnection = nil
     end
-    isCarrying = false
-    currentCarryTag = nil
 end
 
 local function toggleAutoCarryGUI()
@@ -3781,6 +3776,10 @@ local function toggleAutoCarryGUI()
                 startAutoCarry()
             else
                 stopAutoCarry()
+            end
+            
+            if Options.AutoCarryToggle then
+                Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
             end
         end)
         
