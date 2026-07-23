@@ -3791,6 +3791,28 @@ local function toggleAutoCarryGUI()
     end
 end
 
+AutoCarryToggle:OnChanged(function(state)
+    featureStates.AutoCarry = state
+    
+    if state then
+        startAutoCarry()
+    else
+        stopAutoCarry()
+    end
+end)
+
+CarryGUIToggle:OnChanged(function(state)
+    if state then
+        toggleAutoCarryGUI()
+    else
+        local CoreGui = game:GetService("CoreGui")
+        local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
+        if existingScreenGui then
+            existingScreenGui:Destroy()
+        end
+    end
+end)
+
 MiscTab:AddSection("Emote Speed", "solar/playback-speed-bold")
 
 local originalEmoteSpeeds = {}
