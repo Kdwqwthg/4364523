@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 7",
+    Title = "Draconic Hub 8",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3624,20 +3624,12 @@ end)
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
 -- ============================================
--- AUTO CARRY (с обработкой тумблера и кнопки)
+-- AUTO CARRY (с проверкой только через Weld)
 -- ============================================
 
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
     Title = "Auto Carry",
-    Default = false,
-    Callback = function(state)
-        featureStates.AutoCarry = state
-        if state then
-            startAutoCarry()
-        else
-            stopAutoCarry()
-        end
-    end
+    Default = false
 })
 
 CarryGUIToggle = MiscTab:AddToggle("CarryGUIToggle", {
@@ -3652,15 +3644,7 @@ CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
     ChangedCallback = function(New)
     end,
     Callback = function()
-        featureStates.AutoCarry = not featureStates.AutoCarry
-        if featureStates.AutoCarry then
-            startAutoCarry()
-        else
-            stopAutoCarry()
-        end
-        if Options.AutoCarryToggle then
-            Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
-        end
+        Options.AutoCarryToggle:SetValue(not Options.AutoCarryToggle.Value)
     end
 })
 
@@ -3776,10 +3760,6 @@ local function toggleAutoCarryGUI()
                 startAutoCarry()
             else
                 stopAutoCarry()
-            end
-            
-            if Options.AutoCarryToggle then
-                Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
             end
         end)
         
