@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 1",
+    Title = "Draconic Hub 2",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3623,10 +3623,6 @@ end)
 
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
--- ============================================
--- AUTO CARRY (проверка на CarryWeld)
--- ============================================
-
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
     Title = "Auto Carry",
     Default = false,
@@ -3675,7 +3671,7 @@ local Workspace = game:GetService("Workspace")
 local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
 
 local function isCarryingPlayer()
-    local char = workspace.Players.LocalPlayer
+    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
     if char then
         local carryWeld = char:FindFirstChild("CarryWeld")
         if carryWeld then
@@ -3693,7 +3689,6 @@ local function startAutoCarry()
             return 
         end
         
-        -- Проверяем наличие CarryWeld
         if isCarryingPlayer() then
             return
         end
@@ -3795,28 +3790,6 @@ local function toggleAutoCarryGUI()
         end)
     end
 end
-
-AutoCarryToggle:OnChanged(function(state)
-    featureStates.AutoCarry = state
-    
-    if state then
-        startAutoCarry()
-    else
-        stopAutoCarry()
-    end
-end)
-
-CarryGUIToggle:OnChanged(function(state)
-    if state then
-        toggleAutoCarryGUI()
-    else
-        local CoreGui = game:GetService("CoreGui")
-        local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
-        if existingScreenGui then
-            existingScreenGui:Destroy()
-        end
-    end
-end)
 
 MiscTab:AddSection("Emote Speed", "solar/playback-speed-bold")
 
