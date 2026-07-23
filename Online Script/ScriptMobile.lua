@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 9",
+    Title = "Draconic Hub 1",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
