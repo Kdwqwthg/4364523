@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 8",
+    Title = "Draconic Hub 9",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -3624,12 +3624,20 @@ end)
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
 -- ============================================
--- AUTO CARRY (с проверкой только через Weld)
+-- AUTO CARRY (проверка на CarryWeld)
 -- ============================================
 
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
     Title = "Auto Carry",
-    Default = false
+    Default = false,
+    Callback = function(state)
+        featureStates.AutoCarry = state
+        if state then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+    end
 })
 
 CarryGUIToggle = MiscTab:AddToggle("CarryGUIToggle", {
@@ -3644,7 +3652,15 @@ CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
     ChangedCallback = function(New)
     end,
     Callback = function()
-        Options.AutoCarryToggle:SetValue(not Options.AutoCarryToggle.Value)
+        featureStates.AutoCarry = not featureStates.AutoCarry
+        if featureStates.AutoCarry then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+        if Options.AutoCarryToggle then
+            Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
+        end
     end
 })
 
@@ -3661,10 +3677,10 @@ local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and Replicated
 local function isCarryingPlayer()
     local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
     if char then
-        for _, child in ipairs(char:GetDescendants()) do
-            if child:IsA("Weld") then
-                return true
-            end
+        -- Ищем только объект с именем CarryWeld
+        local carryWeld = char:FindFirstChild("CarryWeld")
+        if carryWeld then
+            return true
         end
     end
     return false
@@ -3678,6 +3694,7 @@ local function startAutoCarry()
             return 
         end
         
+        -- Проверяем наличие CarryWeld
         if isCarryingPlayer() then
             return
         end
@@ -3760,6 +3777,10 @@ local function toggleAutoCarryGUI()
                 startAutoCarry()
             else
                 stopAutoCarry()
+            end
+            
+            if Options.AutoCarryToggle then
+                Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
             end
         end)
         
