@@ -3624,7 +3624,7 @@ end)
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
 -- ============================================
--- AUTO CARRY (исправленный)
+-- AUTO CARRY (по тегам из workspace.Players)
 -- ============================================
 
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
@@ -3654,8 +3654,18 @@ local player = game:GetService("Players").LocalPlayer
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
+
+local function getPlayerTag(pl)
+    if not pl then return nil end
+    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(pl.Name)
+    if char then
+        return char:GetAttribute("Tag")
+    end
+    return nil
+end
 
 local function startAutoCarry()
     if AutoCarryConnection then return end
@@ -3669,15 +3679,23 @@ local function startAutoCarry()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         
         if hrp then
-            for _, other in ipairs(Players:GetPlayers()) do
-                if other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = (hrp.Position - other.Character.HumanoidRootPart.Position).Magnitude
-                    if dist <= 20 then
-                        -- БЕЗ ИМЕНИ ИГРОКА!
-                        if InteractRemote then
-                            InteractRemote:FireServer("Carry")
+            local playersFolder = Workspace:FindFirstChild("Players")
+            if not playersFolder then return end
+            
+            for _, otherChar in ipairs(playersFolder:GetChildren()) do
+                if otherChar.Name ~= player.Name then
+                    local otherTag = otherChar:GetAttribute("Tag")
+                    if otherTag then
+                        local otherHrp = otherChar:FindFirstChild("HumanoidRootPart")
+                        if otherHrp then
+                            local dist = (hrp.Position - otherHrp.Position).Magnitude
+                            if dist <= 20 then
+                                if InteractRemote then
+                                    InteractRemote:FireServer("Carry", otherTag)
+                                end
+                                task.wait(0.01)
+                            end
                         end
-                        task.wait(0.01)
                     end
                 end
             end
