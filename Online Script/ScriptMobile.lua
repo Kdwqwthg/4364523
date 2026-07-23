@@ -3357,17 +3357,8 @@ local function createGradientButton(parent, position, size, text, onClickCallbac
     return button, clicker, stroke
 end
 
--- ============================================
--- INSTANT REVIVE (по тегам из workspace.Players, без проверки Downed)
--- ============================================
-
 local InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
     Title = "Instant Revive",
-    Default = false
-})
-
-local ReviveWhileEmoteToggle = MiscTab:AddToggle("ReviveWhileEmoteToggle", {
-    Title = "Instant Revive While Emoting",
     Default = false
 })
 
@@ -3394,8 +3385,6 @@ local InstantReviveModule = (function()
 
     local enabled = false
     local handle = nil
-    local stateConnection = nil
-    local isCurrentlyEmoting = false
 
     local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
 
@@ -3410,11 +3399,6 @@ local InstantReviveModule = (function()
 
     local function reviveLoop()
         while enabled do
-            if isCurrentlyEmoting and not Options.ReviveWhileEmoteToggle.Value then
-                task.wait(0.3)
-                continue
-            end
-
             local myChar = LocalPlayer.Character
             local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
             if not myHRP then
@@ -3450,37 +3434,15 @@ local InstantReviveModule = (function()
         end
     end
 
-    local function updateEmoteStatus()
-        if not LocalPlayer.Character then
-            isCurrentlyEmoting = false
-            return
-        end
-        local state = LocalPlayer.Character:GetAttribute("State")
-        isCurrentlyEmoting = state and string.find(state, "Emoting")
-    end
-
     local function start()
         if handle then return end
         enabled = true
-        updateEmoteStatus()
-
-        if LocalPlayer.Character then
-            stateConnection = LocalPlayer.Character:GetAttributeChangedSignal("State"):Connect(updateEmoteStatus)
-        end
-        LocalPlayer.CharacterAdded:Connect(function(char)
-            if stateConnection then stateConnection:Disconnect() end
-            stateConnection = char:GetAttributeChangedSignal("State"):Connect(updateEmoteStatus)
-            updateEmoteStatus()
-        end)
-
         handle = task.spawn(reviveLoop)
     end
 
     local function stop()
         enabled = false
         if handle then task.cancel(handle) handle = nil end
-        if stateConnection then stateConnection:Disconnect() stateConnection = nil end
-        isCurrentlyEmoting = false
     end
 
     return {
@@ -3625,6 +3587,255 @@ InstantReviveButtonToggle:OnChanged(function(Value)
         end
     end
 end)
+
+MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
+
+AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
+    Title = "Auto Carry",
+    Default = false,
+    Callback = function(state)
+        featureStates.AutoCarry = state
+        if state then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+    end
+})
+
+CarryGUIToggle = MiscTab:AddToggle("CarryGUIToggle", {
+    Title = "Carry GUI Button",
+    Default = false
+})
+
+CarryKeybind = MiscTab:AddKeybind("CarryKeybind", {
+    Title = "Auto Carry Keybind",
+    Mode = "Toggle",
+    Default = "F3",
+    ChangedCallback = function(New)
+    end,
+    Callback = function()
+        featureStates.AutoCarry = not featureStates.AutoCarry
+        if featureStates.AutoCarry then
+            startAutoCarry()
+        else
+            stopAutoCarry()
+        end
+        if Options.AutoCarryToggle then
+            Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
+        end
+    end
+})
+
+local AutoCarryConnection = nil
+local featureStates = featureStates or {}
+local player = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
+
+local isCarrying = false
+
+local function isCarryingPlayer()
+    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
+    if char then
+        -- Проверяем наличие CarryWeld в персонаже
+        local carryWeld = char:FindFirstChild("CarryWeld")
+        if carryWeld then
+            isCarrying = true
+            return true
+        end
+        
+        -- Также проверяем атрибут Carrying
+        local carrying = char:GetAttribute("Carrying")
+        if carrying and carrying ~= 0 then
+            isCarrying = true
+            return true
+        end
+    end
+    
+    isCarrying = false
+    return false
+end
+
+local function startAutoCarry()
+    if AutoCarryConnection then 
+        AutoCarryConnection:Disconnect()
+        AutoCarryConnection = nil
+    end
+    
+    AutoCarryConnection = RunService.Heartbeat:Connect(function()
+        if not featureStates.AutoCarry then 
+            return 
+        end
+        
+        -- Проверяем, несёт ли игрок кого-то
+        if isCarryingPlayer() then
+            return -- Пропускаем итерацию
+        end
+        
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        
+        if hrp then
+            local playersFolder = Workspace:FindFirstChild("Players")
+            if not playersFolder then return end
+            
+            for _, otherChar in ipairs(playersFolder:GetChildren()) do
+                if otherChar.Name ~= player.Name then
+                    local otherTag = otherChar:GetAttribute("Tag")
+                    if otherTag then
+                        local otherHrp = otherChar:FindFirstChild("HumanoidRootPart")
+                        if otherHrp then
+                            local dist = (hrp.Position - otherHrp.Position).Magnitude
+                            if dist <= 20 then
+                                if InteractRemote then
+                                    InteractRemote:FireServer("Carry", otherTag)
+                                end
+                                task.wait(0.01)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function stopAutoCarry()
+    if AutoCarryConnection then
+        AutoCarryConnection:Disconnect()
+        AutoCarryConnection = nil
+    end
+    isCarrying = false
+end
+
+local function toggleAutoCarryGUI()
+    local CoreGui = game:GetService("CoreGui")
+    local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
+    
+    if existingScreenGui then
+        existingScreenGui:Destroy()
+    else
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "AutoCarryButtonGUI"
+        screenGui.ResetOnSpawn = false
+        screenGui.Parent = CoreGui
+        
+        local buttonSize = 180
+        if Options.CarryButtonSizeInput and Options.CarryButtonSizeInput.Value and tonumber(Options.CarryButtonSizeInput.Value) then
+            buttonSize = tonumber(Options.CarryButtonSizeInput.Value)
+        end
+        
+        local btnWidth = math.max(150, math.min(buttonSize, 400))
+        local btnHeight = math.max(60, math.min(buttonSize * 0.4, 160))
+        
+        local btn, clicker, stroke = createGradientButton(
+            screenGui,
+            UDim2.new(0.5, -btnWidth/2, 0.5, -btnHeight/2),
+            UDim2.new(0, btnWidth, 0, btnHeight),
+            "Auto Carry: Off"
+        )
+        
+        local function updateButtonText()
+            if btn and btn:FindFirstChild("TextLabel") then
+                local text = isCarrying and "Auto Carry: Carrying" or (featureStates.AutoCarry and "Auto Carry: On" or "Auto Carry: Off")
+                btn.TextLabel.Text = text
+            end
+        end
+        
+        updateButtonText()
+        
+        clicker.MouseButton1Click:Connect(function()
+            featureStates.AutoCarry = not featureStates.AutoCarry
+            updateButtonText()
+            
+            if featureStates.AutoCarry then
+                startAutoCarry()
+            else
+                stopAutoCarry()
+            end
+            
+            if Options.AutoCarryToggle then
+                Options.AutoCarryToggle:SetValue(featureStates.AutoCarry)
+            end
+        end)
+        
+        AutoCarryToggle:OnChanged(function(state)
+            featureStates.AutoCarry = state
+            updateButtonText()
+            
+            if state then
+                startAutoCarry()
+            else
+                stopAutoCarry()
+            end
+        end)
+    end
+end
+
+AutoCarryToggle:OnChanged(function(state)
+    featureStates.AutoCarry = state
+    
+    if state then
+        startAutoCarry()
+    else
+        stopAutoCarry()
+    end
+end)
+
+CarryGUIToggle:OnChanged(function(state)
+    if state then
+        toggleAutoCarryGUI()
+    else
+        local CoreGui = game:GetService("CoreGui")
+        local existingScreenGui = CoreGui:FindFirstChild("AutoCarryButtonGUI")
+        if existingScreenGui then
+            existingScreenGui:Destroy()
+        end
+    end
+end)
+
+-- ========== СЛЕДИМ ЗА ПОЯВЛЕНИЕМ/ИСЧЕЗНОВЕНИЕМ CARRYWELD ==========
+local carryWeldConnection
+local function setupCarryWeldListener()
+    if carryWeldConnection then
+        carryWeldConnection:Disconnect()
+        carryWeldConnection = nil
+    end
+    
+    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
+    if char then
+        carryWeldConnection = char.ChildAdded:Connect(function(child)
+            if child.Name == "CarryWeld" then
+                isCarrying = true
+                updateButtonText()
+                print("[AutoCarry] CarryWeld появился, остановка")
+            end
+        end)
+        
+        carryWeldConnection = char.ChildRemoved:Connect(function(child)
+            if child.Name == "CarryWeld" then
+                isCarrying = false
+                updateButtonText()
+                print("[AutoCarry] CarryWeld исчез, продолжение")
+            end
+        end)
+    end
+end
+
+-- Переподключаемся при респавне
+player.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    setupCarryWeldListener()
+end)
+
+-- Запускаем слушатель
+task.wait(1)
+setupCarryWeldListener()
 
 MiscTab:AddSection("Emote Speed", "solar/playback-speed-bold")
 
