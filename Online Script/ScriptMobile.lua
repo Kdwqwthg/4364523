@@ -3675,9 +3675,8 @@ local Workspace = game:GetService("Workspace")
 local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
 
 local function isCarryingPlayer()
-    local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
+    local char = workspace.Players.LocalPlayer
     if char then
-        -- Ищем только объект с именем CarryWeld
         local carryWeld = char:FindFirstChild("CarryWeld")
         if carryWeld then
             return true
