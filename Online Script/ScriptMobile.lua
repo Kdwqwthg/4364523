@@ -3624,7 +3624,7 @@ end)
 MiscTab:AddSection("Carry Players", "solar/users-group-rounded-bold")
 
 -- ============================================
--- AUTO CARRY (исправленный путь)
+-- AUTO CARRY (исправленный)
 -- ============================================
 
 AutoCarryToggle = MiscTab:AddToggle("AutoCarryToggle", {
@@ -3655,7 +3655,6 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- НОВЫЙ ПУТЬ
 local InteractRemote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Interact")
 
 local function startAutoCarry()
@@ -3674,8 +3673,9 @@ local function startAutoCarry()
                 if other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart") then
                     local dist = (hrp.Position - other.Character.HumanoidRootPart.Position).Magnitude
                     if dist <= 20 then
+                        -- БЕЗ ИМЕНИ ИГРОКА!
                         if InteractRemote then
-                            InteractRemote:FireServer("Carry", other.Name)
+                            InteractRemote:FireServer("Carry")
                         end
                         task.wait(0.01)
                     end
