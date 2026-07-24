@@ -3357,10 +3357,6 @@ local function createGradientButton(parent, position, size, text, onClickCallbac
     return button, clicker, stroke
 end
 
--- ============================================
--- INSTANT REVIVE (с двумя вариантами вызова)
--- ============================================
-
 local InstantReviveToggle = MiscTab:AddToggle("InstantReviveToggle", {
     Title = "Instant Revive",
     Default = false
@@ -3425,11 +3421,9 @@ local InstantReviveModule = (function()
                             local dist = (myHRP.Position - otherHrp.Position).Magnitude
                             if dist <= reviveRange then
                                 if InteractRemote then
-                                    -- Первый вызов: с true
-                                    InteractRemote:FireServer("Revive", otherTag, true)
-                                    task.wait(0.05)
-                                    -- Второй вызов: без true
                                     InteractRemote:FireServer("Revive", otherTag)
+                                    task.wait(0.05)
+                                    InteractRemote:FireServer("Revive", otherTag, true)
                                 end
                                 task.wait(0.1)
                             end
@@ -3642,14 +3636,12 @@ local isCarrying = false
 local function isCarryingPlayer()
     local char = Workspace:FindFirstChild("Players") and Workspace.Players:FindFirstChild(player.Name)
     if char then
-        -- Проверяем наличие CarryWeld в персонаже
         local carryWeld = char:FindFirstChild("CarryWeld")
         if carryWeld then
             isCarrying = true
             return true
         end
         
-        -- Также проверяем атрибут Carrying
         local carrying = char:GetAttribute("Carrying")
         if carrying and carrying ~= 0 then
             isCarrying = true
@@ -3672,9 +3664,8 @@ local function startAutoCarry()
             return 
         end
         
-        -- Проверяем, несёт ли игрок кого-то
         if isCarryingPlayer() then
-            return -- Пропускаем итерацию
+            return 
         end
         
         local char = player.Character
@@ -3799,7 +3790,6 @@ CarryGUIToggle:OnChanged(function(state)
     end
 end)
 
--- ========== СЛЕДИМ ЗА ПОЯВЛЕНИЕМ/ИСЧЕЗНОВЕНИЕМ CARRYWELD ==========
 local carryWeldConnection
 local function setupCarryWeldListener()
     if carryWeldConnection then
@@ -3827,13 +3817,11 @@ local function setupCarryWeldListener()
     end
 end
 
--- Переподключаемся при респавне
 player.CharacterAdded:Connect(function()
     task.wait(0.5)
     setupCarryWeldListener()
 end)
 
--- Запускаем слушатель
 task.wait(1)
 setupCarryWeldListener()
 
