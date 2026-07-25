@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 8",
+    Title = "Draconic Hub 9",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -1934,6 +1934,8 @@ LeaderboardToggle = Tabs.Main:AddButton({
         local starterGui = game:GetService("StarterGui")
         local TweenService = game:GetService("TweenService")
         local UserInputService = game:GetService("UserInputService")
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
 
         local playerGui = player:WaitForChild("PlayerGui")
         if playerGui:FindFirstChild("CustomTopGui") then
@@ -2275,27 +2277,27 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 contract()
                 if isMouseDown then
                     isMouseDown = false
-                    game:GetService("Players").LocalPlayer.PlayerScripts.Events.temporary_events.UseKeybind:Fire({
-                        Key = config.key,
-                        Down = false
-                    })
+                    local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Character") and ReplicatedStorage.Events.Character:FindFirstChild("Interact")
+                    if remote then
+                        remote:FireServer("UseKeybind", config.key, false)
+                    end
                 end
             end)
 
             ClickRegion.MouseButton1Down:Connect(function()
                 isMouseDown = true
-                game:GetService("Players").LocalPlayer.PlayerScripts.Events.temporary_events.UseKeybind:Fire({
-                    Key = config.key,
-                    Down = true
-                })
+                local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Character") and ReplicatedStorage.Events.Character:FindFirstChild("Interact")
+                if remote then
+                    remote:FireServer("UseKeybind", config.key, true)
+                end
             end)
 
             ClickRegion.MouseButton1Up:Connect(function()
                 isMouseDown = false
-                game:GetService("Players").LocalPlayer.PlayerScripts.Events.temporary_events.UseKeybind:Fire({
-                    Key = config.key,
-                    Down = false
-                })
+                local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Character") and ReplicatedStorage.Events.Character:FindFirstChild("Interact")
+                if remote then
+                    remote:FireServer("UseKeybind", config.key, false)
+                end
             end)
 
             player.CharacterAdded:Connect(function()
