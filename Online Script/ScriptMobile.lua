@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 3",
+    Title = "Draconic Hub 4",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -1893,8 +1893,7 @@ InvisPartsTransparencyToggle:OnChanged(function(state)
     
     
     if state then
-        local invisParts = workspace:FindFirstChild("Game") and 
-                          workspace.Game:FindFirstChild("Map") and 
+        local invisParts = workspace.Game:FindFirstChild("Map") and 
                           workspace.Game.Map:FindFirstChild("InvisParts")
         
         if invisParts then
