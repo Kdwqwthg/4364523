@@ -1979,6 +1979,75 @@ LeaderboardToggle = Tabs.Main:AddButton({
         uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
         uiListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 
+        -- ========== ФУНКЦИИ ДЛЯ КЛАВИШ ==========
+        local function pressKey(keyName)
+            print("[Key] Нажата клавиша:", keyName)
+            
+            -- Способ 1: Через UserInputService (эмуляция)
+            pcall(function()
+                local keyMap = {
+                    Secondary = Enum.KeyCode.MouseRightButton,
+                    Reload = Enum.KeyCode.R,
+                    Leaderboard = Enum.KeyCode.Tab
+                }
+                
+                local key = keyMap[keyName]
+                if key then
+                    -- Эмулируем нажатие
+                    UserInputService:SetKeyDown(key)
+                    task.wait(0.05)
+                    UserInputService:SetKeyUp(key)
+                    print("[Key] Эмуляция через UserInputService:", keyName)
+                end
+            end)
+            
+            -- Способ 2: Через Remote Events (если есть)
+            pcall(function()
+                local remote = ReplicatedStorage:FindFirstChild("Events") and 
+                               ReplicatedStorage.Events:FindFirstChild("Keybind")
+                if remote then
+                    remote:FireServer(keyName, true)
+                    task.wait(0.05)
+                    remote:FireServer(keyName, false)
+                end
+            end)
+            
+            -- Способ 3: Через Character Interact
+            pcall(function()
+                local remote = ReplicatedStorage:FindFirstChild("Events") and 
+                               ReplicatedStorage.Events:FindFirstChild("Character") and 
+                               ReplicatedStorage.Events.Character:FindFirstChild("Interact")
+                if remote then
+                    remote:FireServer("UseKeybind", keyName, true)
+                    task.wait(0.05)
+                    remote:FireServer("UseKeybind", keyName, false)
+                end
+            end)
+            
+            -- Способ 4: Найти KeybindService и использовать его
+            pcall(function()
+                for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+                    if obj:IsA("ModuleScript") and obj.Name == "KeybindService" then
+                        local success, module = pcall(function() return require(obj) end)
+                        if success and module and module.KeyInfoUsed then
+                            module:KeyInfoUsed({
+                                Key = keyName,
+                                Down = true,
+                                GameProcessed = false
+                            })
+                            task.wait(0.05)
+                            module:KeyInfoUsed({
+                                Key = keyName,
+                                Down = false,
+                                GameProcessed = false
+                            })
+                            print("[Key] Через KeybindService:", keyName)
+                        end
+                    end
+                end
+            end)
+        end
+
         local buttonsConfig = {
             {
                 name = "SecondaryButton",
@@ -2008,27 +2077,6 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 key = "Leaderboard"
             }
         }
-
-        -- Находим SendKeybindEvent для эмуляции клавиш
-        local KeybindService = nil
-        local SendKeybindEvent = nil
-        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("ModuleScript") and obj.Name == "KeybindService" then
-                local success, module = pcall(function() return require(obj) end)
-                if success and module then
-                    KeybindService = module
-                    break
-                end
-            end
-        end
-
-        -- Ищем SendKeybindEvent
-        for _, obj in ipairs(game:GetDescendants()) do
-            if obj:IsA("BindableEvent") and obj.Name == "SendKeybindEvent" then
-                SendKeybindEvent = obj
-                break
-            end
-        end
 
         for _, config in ipairs(buttonsConfig) do
             local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -2297,38 +2345,20 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 contract()
                 if isMouseDown then
                     isMouseDown = false
-                    -- Используем SendKeybindEvent для эмуляции клавиши
-                    if SendKeybindEvent then
-                        SendKeybindEvent:Fire({
-                            Key = config.key,
-                            Down = false,
-                            GameProcessed = false
-                        })
-                    end
+                    -- Отпускаем клавишу
+                    pressKey(config.key)
                 end
             end)
 
             ClickRegion.MouseButton1Down:Connect(function()
                 isMouseDown = true
-                -- Используем SendKeybindEvent для эмуляции клавиши
-                if SendKeybindEvent then
-                    SendKeybindEvent:Fire({
-                        Key = config.key,
-                        Down = true,
-                        GameProcessed = false
-                    })
-                end
+                -- Нажимаем клавишу
+                pressKey(config.key)
             end)
 
             ClickRegion.MouseButton1Up:Connect(function()
                 isMouseDown = false
-                if SendKeybindEvent then
-                    SendKeybindEvent:Fire({
-                        Key = config.key,
-                        Down = false,
-                        GameProcessed = false
-                    })
-                end
+                pressKey(config.key)
             end)
 
             player.CharacterAdded:Connect(function()
