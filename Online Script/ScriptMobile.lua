@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 1",
+    Title = "Draconic Hub 2",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -1782,9 +1782,7 @@ NoCollisionToggle = Tabs.Main:AddToggle("NoCollisionToggle", {
 })
 
 local function toggleInvisPartsCollision(state)
-    local invisParts = workspace:FindFirstChild("Game") and 
-                      workspace.Game:FindFirstChild("Map") and 
-                      workspace.Game.Map:FindFirstChild("InvisParts")
+    local invisParts = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("InvisParts")
     
     if not invisParts then
         Fluent:Notify({
@@ -1796,7 +1794,6 @@ local function toggleInvisPartsCollision(state)
     end
     
     local objectsChanged = 0
-    
     
     for _, obj in ipairs(invisParts:GetDescendants()) do
         if obj:IsA("BasePart") then
@@ -1813,24 +1810,14 @@ local function toggleInvisPartsCollision(state)
             objectsChanged),
         Duration = 3
     })
-    
 end
 
 NoCollisionToggle:OnChanged(function(state)
     toggleInvisPartsCollision(state)
-    
-    
-    if state then
-        
-        
-    else
-        
-    end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function()
     if Options.NoCollisionToggle and Options.NoCollisionToggle.Value then
-        
         task.wait(1)
         toggleInvisPartsCollision(true)
     end
@@ -1842,9 +1829,7 @@ InvisPartsTransparencyToggle = Tabs.Main:AddToggle("InvisPartsTransparencyToggle
 })
 
 local function setInvisPartsTransparency(transparent)
-    local invisParts = workspace:FindFirstChild("Game") and 
-                      workspace.Game:FindFirstChild("Map") and 
-                      workspace.Game.Map:FindFirstChild("InvisParts")
+    local invisParts = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("InvisParts")
     
     if not invisParts then
         Fluent:Notify({
@@ -1858,7 +1843,6 @@ local function setInvisPartsTransparency(transparent)
     local changed = 0
     
     if transparent then
-        
         for _, obj in ipairs(invisParts:GetDescendants()) do
             if obj:IsA("BasePart") or obj:IsA("Decal") then
                 obj.Transparency = 0
@@ -1871,9 +1855,7 @@ local function setInvisPartsTransparency(transparent)
             Content = string.format("Set Transparency = 0 for %d objects", changed),
             Duration = 3
         })
-        
     else
-        
         for _, obj in ipairs(invisParts:GetDescendants()) do
             if obj:IsA("BasePart") or obj:IsA("Decal") then
                 obj.Transparency = 1
@@ -1887,20 +1869,15 @@ local function setInvisPartsTransparency(transparent)
             Duration = 3
         })
     end
-    
 end
 
 InvisPartsTransparencyToggle:OnChanged(function(state)
     setInvisPartsTransparency(state)
     
-    
     if state then
-        local invisParts = workspace:FindFirstChild("Game") and 
-                          workspace.Game:FindFirstChild("Map") and 
-                          workspace.Game.Map:FindFirstChild("InvisParts")
+        local invisParts = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("InvisParts")
         
         if invisParts then
-            
             invisParts.DescendantAdded:Connect(function(obj)
                 if state then
                     if obj:IsA("BasePart") or obj:IsA("Decal") then
