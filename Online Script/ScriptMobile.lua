@@ -1983,7 +1983,33 @@ LeaderboardToggle = Tabs.Main:AddButton({
         local function pressKey(keyName)
             print("[Key] Нажата клавиша:", keyName)
             
-            -- Способ 1: Через UserInputService (эмуляция)
+            -- Способ 1: Через SendKeybindEvent
+            local SendKeybindEvent = nil
+            for _, obj in ipairs(game:GetDescendants()) do
+                if obj:IsA("BindableEvent") and obj.Name == "SendKeybindEvent" then
+                    SendKeybindEvent = obj
+                    break
+                end
+            end
+            
+            if SendKeybindEvent then
+                pcall(function()
+                    SendKeybindEvent:Fire({
+                        Key = keyName,
+                        Down = true,
+                        GameProcessed = false
+                    })
+                    task.wait(0.05)
+                    SendKeybindEvent:Fire({
+                        Key = keyName,
+                        Down = false,
+                        GameProcessed = false
+                    })
+                    print("[Key] Отправлено через SendKeybindEvent:", keyName)
+                end)
+            end
+            
+            -- Способ 2: Через UserInputService (эмуляция)
             pcall(function()
                 local keyMap = {
                     Secondary = Enum.KeyCode.MouseRightButton,
@@ -1996,33 +2022,11 @@ LeaderboardToggle = Tabs.Main:AddButton({
                     UserInputService:SetKeyDown(key)
                     task.wait(0.05)
                     UserInputService:SetKeyUp(key)
+                    print("[Key] Эмуляция через UserInputService:", keyName)
                 end
             end)
             
-            -- Способ 2: Через Remote Events
-            pcall(function()
-                local remote = ReplicatedStorage:FindFirstChild("Events") and 
-                               ReplicatedStorage.Events:FindFirstChild("Keybind")
-                if remote then
-                    remote:FireServer(keyName, true)
-                    task.wait(0.05)
-                    remote:FireServer(keyName, false)
-                end
-            end)
-            
-            -- Способ 3: Через Character Interact
-            pcall(function()
-                local remote = ReplicatedStorage:FindFirstChild("Events") and 
-                               ReplicatedStorage.Events:FindFirstChild("Character") and 
-                               ReplicatedStorage.Events.Character:FindFirstChild("Interact")
-                if remote then
-                    remote:FireServer("UseKeybind", keyName, true)
-                    task.wait(0.05)
-                    remote:FireServer("UseKeybind", keyName, false)
-                end
-            end)
-            
-            -- Способ 4: Через KeybindService
+            -- Способ 3: Через KeybindService
             pcall(function()
                 for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
                     if obj:IsA("ModuleScript") and obj.Name == "KeybindService" then
@@ -2031,16 +2035,40 @@ LeaderboardToggle = Tabs.Main:AddButton({
                             module:KeyInfoUsed({
                                 Key = keyName,
                                 Down = true,
-                                GameProcessed = false
+                                GameProcessed = false,
+                                Keybind = keyName,
+                                Key = keyName,
+                                KeyCode = keyName == "Secondary" and Enum.KeyCode.MouseRightButton or 
+                                          keyName == "Reload" and Enum.KeyCode.R or 
+                                          keyName == "Leaderboard" and Enum.KeyCode.Tab,
+                                KeyInfo = {
+                                    UserInputType = keyName == "Secondary" and Enum.UserInputType.MouseButton2 or 
+                                                   Enum.UserInputType.Keyboard
+                                }
                             })
                             task.wait(0.05)
                             module:KeyInfoUsed({
                                 Key = keyName,
                                 Down = false,
-                                GameProcessed = false
+                                GameProcessed = false,
+                                Keybind = keyName,
+                                Key = keyName
                             })
+                            print("[Key] Через KeybindService:", keyName)
                         end
                     end
+                end
+            end)
+            
+            -- Способ 4: Через Remote
+            pcall(function()
+                local remote = ReplicatedStorage:FindFirstChild("Events") and 
+                               ReplicatedStorage.Events:FindFirstChild("Keybind")
+                if remote then
+                    remote:FireServer(keyName, true)
+                    task.wait(0.05)
+                    remote:FireServer(keyName, false)
+                    print("[Key] Через Remote Keybind:", keyName)
                 end
             end)
         end
@@ -2238,7 +2266,7 @@ LeaderboardToggle = Tabs.Main:AddButton({
             IconLabel.Size = UDim2.new(0, 1306, 1, 0)
             IconLabel.ZIndex = 15
             IconLabel.Font = Enum.Font.GothamMedium
-            IconLabel.Text = config.label  -- ← Убедись что текст правильный
+            IconLabel.Text = config.label
             IconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
             IconLabel.TextSize = 16
             IconLabel.TextWrapped = true
@@ -2372,6 +2400,20 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 IconLabelContainer.Visible = false
                 IconOverlay.Visible = false
             end)
+        end
+        
+        -- Принудительно обновляем текст кнопок
+        task.wait(0.5)
+        for _, btn in ipairs(scrollingFrame:GetDescendants()) do
+            if btn:IsA("TextLabel") and btn.Name == "IconLabel" then
+                for _, config in ipairs(buttonsConfig) do
+                    local parent = btn.Parent and btn.Parent.Parent
+                    if parent and parent.Name == config.name then
+                        btn.Text = config.label
+                        btn.Visible = true
+                    end
+                end
+            end
         end
         
         Fluent:Notify({
