@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 5",
+    Title = "Draconic Hub 6",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -1993,15 +1993,13 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 
                 local key = keyMap[keyName]
                 if key then
-                    -- Эмулируем нажатие
                     UserInputService:SetKeyDown(key)
                     task.wait(0.05)
                     UserInputService:SetKeyUp(key)
-                    print("[Key] Эмуляция через UserInputService:", keyName)
                 end
             end)
             
-            -- Способ 2: Через Remote Events (если есть)
+            -- Способ 2: Через Remote Events
             pcall(function()
                 local remote = ReplicatedStorage:FindFirstChild("Events") and 
                                ReplicatedStorage.Events:FindFirstChild("Keybind")
@@ -2024,7 +2022,7 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 end
             end)
             
-            -- Способ 4: Найти KeybindService и использовать его
+            -- Способ 4: Через KeybindService
             pcall(function()
                 for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
                     if obj:IsA("ModuleScript") and obj.Name == "KeybindService" then
@@ -2041,7 +2039,6 @@ LeaderboardToggle = Tabs.Main:AddButton({
                                 Down = false,
                                 GameProcessed = false
                             })
-                            print("[Key] Через KeybindService:", keyName)
                         end
                     end
                 end
@@ -2241,7 +2238,7 @@ LeaderboardToggle = Tabs.Main:AddButton({
             IconLabel.Size = UDim2.new(0, 1306, 1, 0)
             IconLabel.ZIndex = 15
             IconLabel.Font = Enum.Font.GothamMedium
-            IconLabel.Text = config.label
+            IconLabel.Text = config.label  -- ← Убедись что текст правильный
             IconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
             IconLabel.TextSize = 16
             IconLabel.TextWrapped = true
@@ -2345,14 +2342,12 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 contract()
                 if isMouseDown then
                     isMouseDown = false
-                    -- Отпускаем клавишу
                     pressKey(config.key)
                 end
             end)
 
             ClickRegion.MouseButton1Down:Connect(function()
                 isMouseDown = true
-                -- Нажимаем клавишу
                 pressKey(config.key)
             end)
 
