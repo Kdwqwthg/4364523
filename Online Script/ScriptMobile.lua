@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 2",
+    Title = "Draconic Hub 3",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -1782,8 +1782,7 @@ NoCollisionToggle = Tabs.Main:AddToggle("NoCollisionToggle", {
 })
 
 local function toggleInvisPartsCollision(state)
-    local invisParts = workspace:FindFirstChild("Game") and 
-                      workspace.Game:FindFirstChild("Map") and 
+    local invisParts = workspace.Game:FindFirstChild("Map") and 
                       workspace.Game.Map:FindFirstChild("InvisParts")
     
     if not invisParts then
@@ -1842,8 +1841,7 @@ InvisPartsTransparencyToggle = Tabs.Main:AddToggle("InvisPartsTransparencyToggle
 })
 
 local function setInvisPartsTransparency(transparent)
-    local invisParts = workspace:FindFirstChild("Game") and 
-                      workspace.Game:FindFirstChild("Map") and 
+    local invisParts = workspace.Game:FindFirstChild("Map") and 
                       workspace.Game.Map:FindFirstChild("InvisParts")
     
     if not invisParts then
