@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 9",
+    Title = "Draconic Hub 1",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -1934,8 +1934,7 @@ LeaderboardToggle = Tabs.Main:AddButton({
         local starterGui = game:GetService("StarterGui")
         local TweenService = game:GetService("TweenService")
         local UserInputService = game:GetService("UserInputService")
-        local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
         local playerGui = player:WaitForChild("PlayerGui")
         if playerGui:FindFirstChild("CustomTopGui") then
@@ -2009,6 +2008,27 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 key = "Leaderboard"
             }
         }
+
+        -- Находим SendKeybindEvent для эмуляции клавиш
+        local KeybindService = nil
+        local SendKeybindEvent = nil
+        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("ModuleScript") and obj.Name == "KeybindService" then
+                local success, module = pcall(function() return require(obj) end)
+                if success and module then
+                    KeybindService = module
+                    break
+                end
+            end
+        end
+
+        -- Ищем SendKeybindEvent
+        for _, obj in ipairs(game:GetDescendants()) do
+            if obj:IsA("BindableEvent") and obj.Name == "SendKeybindEvent" then
+                SendKeybindEvent = obj
+                break
+            end
+        end
 
         for _, config in ipairs(buttonsConfig) do
             local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -2277,26 +2297,37 @@ LeaderboardToggle = Tabs.Main:AddButton({
                 contract()
                 if isMouseDown then
                     isMouseDown = false
-                    local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Character") and ReplicatedStorage.Events.Character:FindFirstChild("Interact")
-                    if remote then
-                        remote:FireServer("UseKeybind", config.key, false)
+                    -- Используем SendKeybindEvent для эмуляции клавиши
+                    if SendKeybindEvent then
+                        SendKeybindEvent:Fire({
+                            Key = config.key,
+                            Down = false,
+                            GameProcessed = false
+                        })
                     end
                 end
             end)
 
             ClickRegion.MouseButton1Down:Connect(function()
                 isMouseDown = true
-                local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Character") and ReplicatedStorage.Events.Character:FindFirstChild("Interact")
-                if remote then
-                    remote:FireServer("UseKeybind", config.key, true)
+                -- Используем SendKeybindEvent для эмуляции клавиши
+                if SendKeybindEvent then
+                    SendKeybindEvent:Fire({
+                        Key = config.key,
+                        Down = true,
+                        GameProcessed = false
+                    })
                 end
             end)
 
             ClickRegion.MouseButton1Up:Connect(function()
                 isMouseDown = false
-                local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Character") and ReplicatedStorage.Events.Character:FindFirstChild("Interact")
-                if remote then
-                    remote:FireServer("UseKeybind", config.key, false)
+                if SendKeybindEvent then
+                    SendKeybindEvent:Fire({
+                        Key = config.key,
+                        Down = false,
+                        GameProcessed = false
+                    })
                 end
             end)
 
