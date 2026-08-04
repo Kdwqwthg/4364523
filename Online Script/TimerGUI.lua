@@ -172,7 +172,6 @@ local function CreateTimerGUI()
     CountdownBorder.Color = Color3.fromRGB(255, 255, 255)
     CountdownBorder.Transparency = 0.7
 
-    -- ========== ПЕРЕТАСКИВАНИЕ ==========
     local dragging = false
     local dragInput = nil
     local dragStart = nil
@@ -221,7 +220,6 @@ end
 
 local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
 
--- Переменные для отслеживания Timer
 local timerObject = nil
 local lastTimerText = ""
 local lastChangeTime = 0
@@ -231,9 +229,7 @@ local changeTimeConnection = nil
 
 local function updateTimerDisplay(text)
     if text and text ~= "" then
-        -- Проверяем, изменился ли текст
         if text ~= lastTimerText then
-            -- Текст изменился - обновляем время последнего изменения и убираем WAIT
             lastChangeTime = tick()
             if isWaiting then
                 isWaiting = false
@@ -243,7 +239,6 @@ local function updateTimerDisplay(text)
             end
         end
         
-        -- Обновляем текст таймера только если не в режиме WAIT
         if not isWaiting then
             TimerLabel.Text = text
             TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -254,7 +249,6 @@ local function updateTimerDisplay(text)
 end
 
 local function checkWaitStatus()
-    -- Если текст не менялся 2 секунды и мы не в режиме WAIT
     if not isWaiting and (tick() - lastChangeTime) >= 2 and lastTimerText ~= "" then
         isWaiting = true
         StatusLabel.Text = "WAIT"
@@ -264,7 +258,6 @@ local function checkWaitStatus()
 end
 
 local function findTimerObject()
-    -- Ищем Timer по пути game.Players.LocalPlayer.PlayerGui.Game.HUD.Overlay.RoundOverlay.RoundTimer.IngameRoundTimer.Timer
     local gameHUD = PlayerGui:FindFirstChild("Game")
     if gameHUD then
         local hud = gameHUD:FindFirstChild("HUD")
@@ -291,25 +284,21 @@ local function checkTimer()
     local timer = findTimerObject()
     
     if timer then
-        -- Если объект найден, отслеживаем его текст
         timerObject = timer
         updateTimerDisplay(timer.Text)
         
-        -- Подписываемся на изменение текста
         if not textCheckConnection then
             textCheckConnection = timer:GetPropertyChangedSignal("Text"):Connect(function()
                 updateTimerDisplay(timer.Text)
             end)
         end
         
-        -- Запускаем проверку WAIT каждую секунду
         if not changeTimeConnection then
             changeTimeConnection = RunService.Stepped:Connect(function()
                 checkWaitStatus()
             end)
         end
     else
-        -- Если объект не найден, показываем "Join Game"
         TimerLabel.Text = "JOIN GAME"
         TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         StatusLabel.Text = "WAITING"
@@ -329,12 +318,10 @@ local function checkTimer()
     end
 end
 
--- Основной цикл проверки
 local checkConnection = RunService.Stepped:Connect(function()
     checkTimer()
 end)
 
--- Функция очистки
 local function cleanupTimer()
     if textCheckConnection then
         textCheckConnection:Disconnect()
@@ -358,7 +345,6 @@ TimerContainer.Destroying:Connect(function()
     cleanupTimer()
 end)
 
--- Дополнительная проверка при изменении PlayerGui
 PlayerGui.ChildAdded:Connect(function(child)
     if child.Name == "Game" then
         checkTimer()
