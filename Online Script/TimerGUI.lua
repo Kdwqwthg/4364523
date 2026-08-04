@@ -1,4 +1,3 @@
---2345
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -225,31 +224,42 @@ local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimatio
 -- Переменные для отслеживания Timer
 local timerObject = nil
 local lastTimerText = ""
-local waitCounter = 0
+local lastChangeTime = 0
 local isWaiting = false
 local textCheckConnection = nil
+local changeTimeConnection = nil
 
 local function updateTimerDisplay(text)
     if text and text ~= "" then
-        -- Обновляем текст таймера
-        TimerLabel.Text = text
-        
-        -- Проверяем, остановилось ли время (включая 0:00)
-        if text == lastTimerText then
-            -- Текст не изменился - считаем
-            waitCounter = waitCounter + 1
-            if waitCounter >= 2 and not isWaiting then
-                isWaiting = true
-                StatusLabel.Text = "WAIT"
+        -- Проверяем, изменился ли текст
+        if text ~= lastTimerText then
+            -- Текст изменился - обновляем время последнего изменения и убираем WAIT
+            lastChangeTime = tick()
+            if isWaiting then
+                isWaiting = false
+                StatusLabel.Text = "ROUND ACTIVE"
+                TimerLabel.Text = text
+                TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
             end
-        else
-            -- Текст изменился - сбрасываем счетчик
-            waitCounter = 0
-            isWaiting = false
-            StatusLabel.Text = "ROUND ACTIVE"
+        end
+        
+        -- Обновляем текст таймера только если не в режиме WAIT
+        if not isWaiting then
+            TimerLabel.Text = text
+            TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
         
         lastTimerText = text
+    end
+end
+
+local function checkWaitStatus()
+    -- Если текст не менялся 2 секунды и мы не в режиме WAIT
+    if not isWaiting and (tick() - lastChangeTime) >= 2 and lastTimerText ~= "" then
+        isWaiting = true
+        StatusLabel.Text = "WAIT"
+        TimerLabel.Text = "WAIT"
+        TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     end
 end
 
@@ -291,19 +301,30 @@ local function checkTimer()
                 updateTimerDisplay(timer.Text)
             end)
         end
+        
+        -- Запускаем проверку WAIT каждую секунду
+        if not changeTimeConnection then
+            changeTimeConnection = RunService.Stepped:Connect(function()
+                checkWaitStatus()
+            end)
+        end
     else
         -- Если объект не найден, показываем "Join Game"
         TimerLabel.Text = "JOIN GAME"
-        TimerLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         StatusLabel.Text = "WAITING"
         timerObject = nil
         lastTimerText = ""
-        waitCounter = 0
+        lastChangeTime = 0
         isWaiting = false
         
         if textCheckConnection then
             textCheckConnection:Disconnect()
             textCheckConnection = nil
+        end
+        if changeTimeConnection then
+            changeTimeConnection:Disconnect()
+            changeTimeConnection = nil
         end
     end
 end
@@ -318,6 +339,10 @@ local function cleanupTimer()
     if textCheckConnection then
         textCheckConnection:Disconnect()
         textCheckConnection = nil
+    end
+    if changeTimeConnection then
+        changeTimeConnection:Disconnect()
+        changeTimeConnection = nil
     end
     if checkConnection then
         checkConnection:Disconnect()
