@@ -1,3 +1,4 @@
+--2345
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -224,25 +225,26 @@ local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimatio
 -- Переменные для отслеживания Timer
 local timerObject = nil
 local lastTimerText = ""
-local waitTimer = 0
+local waitCounter = 0
 local isWaiting = false
 local textCheckConnection = nil
 
 local function updateTimerDisplay(text)
     if text and text ~= "" then
+        -- Обновляем текст таймера
         TimerLabel.Text = text
-        TimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        StatusLabel.Text = "ROUND ACTIVE"
         
-        -- Проверяем, остановилось ли время
+        -- Проверяем, остановилось ли время (включая 0:00)
         if text == lastTimerText then
-            waitTimer = waitTimer + 1
-            if waitTimer >= 2 and not isWaiting then
+            -- Текст не изменился - считаем
+            waitCounter = waitCounter + 1
+            if waitCounter >= 2 and not isWaiting then
                 isWaiting = true
                 StatusLabel.Text = "WAIT"
             end
         else
-            waitTimer = 0
+            -- Текст изменился - сбрасываем счетчик
+            waitCounter = 0
             isWaiting = false
             StatusLabel.Text = "ROUND ACTIVE"
         end
@@ -296,7 +298,7 @@ local function checkTimer()
         StatusLabel.Text = "WAITING"
         timerObject = nil
         lastTimerText = ""
-        waitTimer = 0
+        waitCounter = 0
         isWaiting = false
         
         if textCheckConnection then
