@@ -1,4 +1,3 @@
---1234
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
@@ -222,7 +221,7 @@ end
 
 local TimerLabel, StatusLabel, MainInterface, TimerContainer, backgroundAnimation = CreateTimerGUI()
 
--- Переменные для отслеживания IngameRoundTimer
+-- Переменные для отслеживания Timer
 local timerObject = nil
 local lastTimerText = ""
 local waitTimer = 0
@@ -253,7 +252,7 @@ local function updateTimerDisplay(text)
 end
 
 local function findTimerObject()
-    -- Ищем IngameRoundTimer по пути
+    -- Ищем Timer по пути game.Players.LocalPlayer.PlayerGui.Game.HUD.Overlay.RoundOverlay.RoundTimer.IngameRoundTimer.Timer
     local gameHUD = PlayerGui:FindFirstChild("Game")
     if gameHUD then
         local hud = gameHUD:FindFirstChild("HUD")
@@ -264,7 +263,10 @@ local function findTimerObject()
                 if roundOverlay then
                     local roundTimer = roundOverlay:FindFirstChild("RoundTimer")
                     if roundTimer then
-                        return roundTimer:FindFirstChild("IngameRoundTimer")
+                        local ingameRoundTimer = roundTimer:FindFirstChild("IngameRoundTimer")
+                        if ingameRoundTimer then
+                            return ingameRoundTimer:FindFirstChild("Timer")
+                        end
                     end
                 end
             end
