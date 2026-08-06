@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 3",
+    Title = "Draconic Hub 5",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -5435,7 +5435,7 @@ end)
 
 SettingsTab:AddSection("Button Positions", "solar/cursor-bold")
 
-local ButtonPositions = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/ButtonPositions.lua"))()
+local ButtonPositions = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/ButtonPositions.lu"))()
 
 SettingsTab:AddButton({
     Title = "Save Button Positions",
