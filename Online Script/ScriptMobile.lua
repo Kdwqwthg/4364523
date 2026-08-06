@@ -53,28 +53,6 @@ Fluent:Notify({
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local gradientButtonSource
-pcall(function()
-    if typeof(readfile) == "function" then
-        gradientButtonSource = readfile("Online Script/CreateGradientButton.lua")
-    end
-end)
-if type(gradientButtonSource) ~= "string" or #gradientButtonSource < 80 then
-    gradientButtonSource = game:HttpGet(GRADIENT_BUTTON_URL, true)
-end
-local createGradientButton = loadstring(gradientButtonSource)().createGradientButton
-
-local simpleTimerSource
-pcall(function()
-    if typeof(readfile) == "function" then
-        simpleTimerSource = readfile("Online Script/CreateSimpleTimer.lua")
-    end
-end)
-if type(simpleTimerSource) ~= "string" or #simpleTimerSource < 80 then
-    simpleTimerSource = game:HttpGet(SIMPLE_TIMER_URL, true)
-end
-local createSimpleTimer = loadstring(simpleTimerSource)().createSimpleTimer
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
