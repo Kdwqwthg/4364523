@@ -26,8 +26,6 @@ local Window = Fluent:CreateWindow({
 })
 
 local FLOATING_BTN_URL = "https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/FlyBytton.lua"
-local GRADIENT_BUTTON_URL = "https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/CreateGradientButton.lu"
-local SIMPLE_TIMER_URL = "https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/CreateSimpleTimer.lu"
 local floatingBtnSource
 pcall(function()
     if typeof(readfile) == "function" then
@@ -5435,7 +5433,7 @@ end)
 
 SettingsTab:AddSection("Button Positions", "solar/cursor-bold")
 
-local ButtonPositions = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/ButtonPositions.lu"))()
+local ButtonPositions = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/ButtonPositions.lua"))()
 
 SettingsTab:AddButton({
     Title = "Save Button Positions",
