@@ -26,7 +26,7 @@ local Window = Fluent:CreateWindow({
 })
 
 local FLOATING_BTN_URL = "https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/FlyBytton.lua"
-local GRADIENT_BUTTON_URL = "https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/CreateGradientButton.lua"
+local GRADIENT_BUTTON_URL = "https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/CreateGradientButton.lu"
 local SIMPLE_TIMER_URL = "https://raw.githubusercontent.com/Kdwqwthg/4364523/refs/heads/main/Online%20Script/CreateSimpleTimer.lu"
 local floatingBtnSource
 pcall(function()
