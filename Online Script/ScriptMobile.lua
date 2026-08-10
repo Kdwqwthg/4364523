@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 3",
+    Title = "Draconic Hub 4",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2853,7 +2853,7 @@ pcall(function()
     BaseStats = require(ReplicatedStorage.Objects.Game.Character.Client.Movement.MoveStats.BaseStats)
 end)
 
--- Если не загрузился, ищем через GC
+-- Если не загрузился, ищем через GC (только для поиска модуля)
 if not BaseStats then
     for _, obj in ipairs(getgc(true)) do
         if type(obj) == "table" and rawget(obj, "Speed") ~= nil and rawget(obj, "JumpCap") ~= nil then
@@ -2881,17 +2881,6 @@ local function applyAll()
         BaseStats.JumpHeight = currentSettings.JumpPower
         BaseStats.JumpCap = currentSettings.JumpCap
         BaseStats.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
-    end
-    
-    -- Применяем к Humanoid для гарантии
-    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
-    if char then
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = currentSettings.Speed
-            humanoid.JumpPower = currentSettings.JumpPower
-        end
-        char:SetAttribute("JumpCap", currentSettings.JumpCap)
     end
     
     applyFOV(currentSettings.FOV)
