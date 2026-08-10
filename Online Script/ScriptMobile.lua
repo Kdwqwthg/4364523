@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 2",
+    Title = "Draconic Hub 3",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2846,22 +2846,18 @@ local currentSettings = {
     FOV = 70
 }
 
-local BaseStatsModule = nil
+local BaseStats = nil
 
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("ModuleScript") and obj.Name == "BaseStats" then
-        local success, module = pcall(function() return require(obj) end)
-        if success and module then
-            BaseStatsModule = module
-            break
-        end
-    end
-end
+-- Загружаем модуль по точному пути
+pcall(function()
+    BaseStats = require(ReplicatedStorage.Objects.Game.Character.Client.Movement.MoveStats.BaseStats)
+end)
 
-if not BaseStatsModule then
+-- Если не загрузился, ищем через GC
+if not BaseStats then
     for _, obj in ipairs(getgc(true)) do
         if type(obj) == "table" and rawget(obj, "Speed") ~= nil and rawget(obj, "JumpCap") ~= nil then
-            BaseStatsModule = obj
+            BaseStats = obj
             break
         end
     end
@@ -2879,13 +2875,15 @@ local function applyFOV(value)
 end
 
 local function applyAll()
-    if BaseStatsModule then
-        BaseStatsModule.Speed = currentSettings.Speed
-        BaseStatsModule.JumpHeight = currentSettings.JumpPower
-        BaseStatsModule.JumpCap = currentSettings.JumpCap
-        BaseStatsModule.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
+    -- Меняем только BaseStats модуль
+    if BaseStats then
+        BaseStats.Speed = currentSettings.Speed
+        BaseStats.JumpHeight = currentSettings.JumpPower
+        BaseStats.JumpCap = currentSettings.JumpCap
+        BaseStats.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
     end
     
+    -- Применяем к Humanoid для гарантии
     local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
     if char then
         local humanoid = char:FindFirstChild("Humanoid")
@@ -2898,7 +2896,6 @@ local function applyAll()
     
     applyFOV(currentSettings.FOV)
 end
-
 
 MiscTab:AddInput("SpeedInput", {
     Title = "Player Speed",
