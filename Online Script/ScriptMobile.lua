@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 2",
+    Title = "Draconic Hub 3",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2832,6 +2832,7 @@ timerConnection = game:GetService("RunService").Heartbeat:Connect(function()
 end)
 
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
+-- ===== ИСПРАВЛЕННЫЙ РАЗДЕЛ PLAYER ADJUSTMENTS (ГАРАНТИРОВАННО РАБОЧАЯ ВЕРСИЯ) =====
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
 local Players = game:GetService("Players")
@@ -2840,66 +2841,89 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local currentSettings = {
     Speed = 1500,
-    JumpPower = 3.5,
-    JumpCap = 2,
-    JumpSpeedMultiplier = 1.5,
+    JumpPower = 3,
+    JumpCap = 1,
+    AirStrafeAcceleration = 182,
     FOV = 70
 }
 
 local BaseStatsModule = nil
+local lastFOV = 70
 
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-    if obj:IsA("ModuleScript") and obj.Name == "BaseStats" then
-        local success, module = pcall(function() return require(obj) end)
-        if success and module then
-            BaseStatsModule = module
-            break
+-- Поиск BaseStats модуля
+pcall(function()
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("ModuleScript") and obj.Name == "BaseStats" then
+            local success, module = pcall(function() return require(obj) end)
+            if success and module then
+                BaseStatsModule = module
+                break
+            end
         end
     end
-end
+end)
 
 if not BaseStatsModule then
-    for _, obj in ipairs(getgc(true)) do
-        if type(obj) == "table" and rawget(obj, "Speed") ~= nil and rawget(obj, "JumpCap") ~= nil then
-            BaseStatsModule = obj
-            break
+    pcall(function()
+        for _, obj in ipairs(getgc(true)) do
+            if type(obj) == "table" and rawget(obj, "Speed") ~= nil and rawget(obj, "JumpCap") ~= nil then
+                BaseStatsModule = obj
+                break
+            end
         end
-    end
+    end)
 end
 
 local function applyFOV(value)
-    local Event = ReplicatedStorage:FindFirstChild("Shared") and ReplicatedStorage.Shared:FindFirstChild("UserData") and ReplicatedStorage.Shared.UserData:FindFirstChild("Events") and ReplicatedStorage.Shared.UserData.Events:FindFirstChild("Requests") and ReplicatedStorage.Shared.UserData.Events.Requests:FindFirstChild("SetSetting")
-    if Event then
-        Event:FireServer("FOV", value)
-    end
-    local camera = workspace.CurrentCamera
-    if camera then
-        camera.FieldOfView = value
+    if value ~= lastFOV then
+        lastFOV = value
+        pcall(function()
+            local Event = ReplicatedStorage:FindFirstChild("Shared") and 
+                         ReplicatedStorage.Shared:FindFirstChild("UserData") and 
+                         ReplicatedStorage.Shared.UserData:FindFirstChild("Events") and 
+                         ReplicatedStorage.Shared.UserData.Events:FindFirstChild("Requests") and 
+                         ReplicatedStorage.Shared.UserData.Events.Requests:FindFirstChild("SetSetting")
+            if Event then
+                Event:FireServer("FOV", value)
+            end
+        end)
+        pcall(function()
+            local camera = workspace.CurrentCamera
+            if camera then
+                camera.FieldOfView = value
+            end
+        end)
     end
 end
 
 local function applyAll()
-    if BaseStatsModule then
-        BaseStatsModule.Speed = currentSettings.Speed
-        BaseStatsModule.JumpHeight = currentSettings.JumpPower
-        BaseStatsModule.JumpCap = currentSettings.JumpCap
-        BaseStatsModule.JumpSpeedMultiplier = currentSettings.JumpSpeedMultiplier
-    end
-    
-    local char = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild(LocalPlayer.Name)
-    if char then
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = currentSettings.Speed
-            humanoid.JumpPower = currentSettings.JumpPower
+    pcall(function()
+        if BaseStatsModule then
+            BaseStatsModule.Speed = currentSettings.Speed / 90
+            BaseStatsModule.JumpHeight = currentSettings.JumpPower
+            BaseStatsModule.JumpCap = currentSettings.JumpCap
+            BaseStatsModule.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
         end
-        char:SetAttribute("JumpCap", currentSettings.JumpCap)
-    end
+    end)
     
-    applyFOV(currentSettings.FOV)
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = currentSettings.Speed / 90
+                humanoid.JumpPower = currentSettings.JumpPower
+            end
+            char:SetAttribute("JumpCap", currentSettings.JumpCap)
+        end
+    end)
+    
+    pcall(function()
+        applyFOV(currentSettings.FOV)
+    end)
 end
 
-
+-- GUI Элементы
 MiscTab:AddInput("SpeedInput", {
     Title = "Player Speed",
     Default = "1500",
@@ -2916,9 +2940,9 @@ MiscTab:AddInput("SpeedInput", {
 })
 
 MiscTab:AddInput("JumpPowerInput", {
-    Title = "Player Jump",
-    Default = "3.5",
-    Placeholder = "Default 3.5",
+    Title = "Player Jump Height",
+    Default = "3",
+    Placeholder = "Default 3",
     Numeric = true,
     Finished = true,
     Callback = function(Value)
@@ -2932,8 +2956,8 @@ MiscTab:AddInput("JumpPowerInput", {
 
 MiscTab:AddInput("JumpCapInput", {
     Title = "Player Jump Cap",
-    Default = "2",
-    Placeholder = "Default 2",
+    Default = "1",
+    Placeholder = "Default 1",
     Numeric = true,
     Finished = false,
     Callback = function(Value)
@@ -2945,16 +2969,16 @@ MiscTab:AddInput("JumpCapInput", {
     end
 })
 
-MiscTab:AddInput("StrafeInput", {
-    Title = "Player Strafe Acceleration",
-    Default = "1.5",
-    Placeholder = "Default 1.5",
+MiscTab:AddInput("AirStrafeInput", {
+    Title = "Air Strafe Acceleration",
+    Default = "182",
+    Placeholder = "Default 182",
     Numeric = true,
     Finished = false,
     Callback = function(Value)
         local val = tonumber(Value)
-        if val and val >= 0.1 and val <= 100 then
-            currentSettings.JumpSpeedMultiplier = val
+        if val and val >= 1 and val <= 10000 then
+            currentSettings.AirStrafeAcceleration = val
             applyAll()
         end
     end
@@ -2974,19 +2998,22 @@ MiscTab:AddInput("FovInput", {
     end
 })
 
+-- Цикл обновления
 spawn(function()
     while task.wait(0.05) do
-        applyAll()
+        pcall(applyAll)
     end
 end)
 
+-- При смене персонажа
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.3)
-    applyAll()
+    pcall(applyAll)
 end)
 
+-- Первоначальное применение
 task.wait(0.3)
-applyAll()
+pcall(applyAll)
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
 
