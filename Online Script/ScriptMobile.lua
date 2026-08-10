@@ -2832,12 +2832,13 @@ timerConnection = game:GetService("RunService").Heartbeat:Connect(function()
 end)
 
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
--- ===== ИСПРАВЛЕННЫЙ РАЗДЕЛ PLAYER ADJUSTMENTS (ГАРАНТИРОВАННО РАБОЧАЯ ВЕРСИЯ) =====
+-- ===== ИСПРАВЛЕННЫЙ РАЗДЕЛ PLAYER ADJUSTMENTS =====
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local currentSettings = {
     Speed = 1500,
@@ -2847,46 +2848,49 @@ local currentSettings = {
     FOV = 70
 }
 
-local BaseStatsModule = nil
 local lastFOV = 70
+local fovChanged = false
 
--- Поиск BaseStats модуля
+-- Загрузка модулей по путям
+local BaseStats = nil
+local MoveStats = nil
+local CharacterModule = nil
+local CharacterService = nil
+
 pcall(function()
-    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("ModuleScript") and obj.Name == "BaseStats" then
-            local success, module = pcall(function() return require(obj) end)
-            if success and module then
-                BaseStatsModule = module
-                break
-            end
-        end
-    end
+    -- BaseStats
+    BaseStats = require(ReplicatedStorage.Objects.Game.Character.Client.Movement.MoveStats.BaseStats)
 end)
 
-if not BaseStatsModule then
-    pcall(function()
-        for _, obj in ipairs(getgc(true)) do
-            if type(obj) == "table" and rawget(obj, "Speed") ~= nil and rawget(obj, "JumpCap") ~= nil then
-                BaseStatsModule = obj
-                break
-            end
-        end
-    end)
+pcall(function()
+    -- MoveStats
+    MoveStats = require(ReplicatedStorage.Objects.Game.Character.Client.Movement.MoveStats)
+end)
+
+pcall(function()
+    -- Character модуль
+    CharacterModule = require(ReplicatedStorage.Objects.Game.Character)
+end)
+
+pcall(function()
+    -- CharacterService
+    CharacterService = require(ReplicatedStorage.Services.Asset.CharacterService)
+end)
+
+-- Функция поиска Character через CharacterService
+local function getLocalCharacter()
+    if CharacterService then
+        pcall(function()
+            return CharacterService:GetLocalCharacter()
+        end)
+    end
+    return nil
 end
 
+-- Функция применения FOV
 local function applyFOV(value)
     if value ~= lastFOV then
         lastFOV = value
-        pcall(function()
-            local Event = ReplicatedStorage:FindFirstChild("Shared") and 
-                         ReplicatedStorage.Shared:FindFirstChild("UserData") and 
-                         ReplicatedStorage.Shared.UserData:FindFirstChild("Events") and 
-                         ReplicatedStorage.Shared.UserData.Events:FindFirstChild("Requests") and 
-                         ReplicatedStorage.Shared.UserData.Events.Requests:FindFirstChild("SetSetting")
-            if Event then
-                Event:FireServer("FOV", value)
-            end
-        end)
         pcall(function()
             local camera = workspace.CurrentCamera
             if camera then
@@ -2896,16 +2900,45 @@ local function applyFOV(value)
     end
 end
 
+-- Основная функция применения
 local function applyAll()
+    -- 1. Применяем через BaseStats
     pcall(function()
-        if BaseStatsModule then
-            BaseStatsModule.Speed = currentSettings.Speed / 90
-            BaseStatsModule.JumpHeight = currentSettings.JumpPower
-            BaseStatsModule.JumpCap = currentSettings.JumpCap
-            BaseStatsModule.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
+        if BaseStats then
+            BaseStats.Speed = currentSettings.Speed / 90
+            BaseStats.JumpHeight = currentSettings.JumpPower
+            BaseStats.JumpCap = currentSettings.JumpCap
+            BaseStats.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
         end
     end)
     
+    -- 2. Применяем через MoveStats
+    pcall(function()
+        if MoveStats and MoveStats.MoveStats then
+            MoveStats.MoveStats.Speed = currentSettings.Speed / 90
+            MoveStats.MoveStats.JumpHeight = currentSettings.JumpPower
+            MoveStats.MoveStats.JumpCap = currentSettings.JumpCap
+            MoveStats.MoveStats.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
+        end
+    end)
+    
+    -- 3. Применяем через CharacterService
+    pcall(function()
+        if CharacterService then
+            local localChar = CharacterService:GetLocalCharacter()
+            if localChar and localChar.MoveStats and localChar.MoveStats.MoveStats then
+                localChar.MoveStats.MoveStats.Speed = currentSettings.Speed / 90
+                localChar.MoveStats.MoveStats.JumpHeight = currentSettings.JumpPower
+                localChar.MoveStats.MoveStats.JumpCap = currentSettings.JumpCap
+                localChar.MoveStats.MoveStats.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
+                if localChar.MoveStats.UpdateAttributes then
+                    localChar.MoveStats:UpdateAttributes()
+                end
+            end
+        end
+    end)
+    
+    -- 4. Применяем к Humanoid
     pcall(function()
         local char = LocalPlayer.Character
         if char then
@@ -2915,9 +2948,26 @@ local function applyAll()
                 humanoid.JumpPower = currentSettings.JumpPower
             end
             char:SetAttribute("JumpCap", currentSettings.JumpCap)
+            char:SetAttribute("Speed", currentSettings.Speed / 90)
+            char:SetAttribute("JumpHeight", currentSettings.JumpPower)
+            char:SetAttribute("AirStrafeAcceleration", currentSettings.AirStrafeAcceleration)
         end
     end)
     
+    -- 5. Применяем через DataRegistry
+    pcall(function()
+        if CharacterService then
+            local localChar = CharacterService:GetLocalCharacter()
+            if localChar and localChar.DataRegistry then
+                localChar.DataRegistry:Set("Speed", currentSettings.Speed / 90)
+                localChar.DataRegistry:Set("JumpHeight", currentSettings.JumpPower)
+                localChar.DataRegistry:Set("JumpCap", currentSettings.JumpCap)
+                localChar.DataRegistry:Set("AirStrafeAcceleration", currentSettings.AirStrafeAcceleration)
+            end
+        end
+    end)
+    
+    -- 6. Применяем FOV
     pcall(function()
         applyFOV(currentSettings.FOV)
     end)
@@ -2998,21 +3048,19 @@ MiscTab:AddInput("FovInput", {
     end
 })
 
--- Цикл обновления
-spawn(function()
-    while task.wait(0.05) do
-        pcall(applyAll)
-    end
+-- Постоянное применение через Heartbeat
+local applyConnection = RunService.Heartbeat:Connect(function()
+    pcall(applyAll)
 end)
 
 -- При смене персонажа
 LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.3)
+    task.wait(0.5)
     pcall(applyAll)
 end)
 
 -- Первоначальное применение
-task.wait(0.3)
+task.wait(0.5)
 pcall(applyAll)
 
 MiscTab:AddSection("Bounce", "solar/transfer-vertical-bold")
