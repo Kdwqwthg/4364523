@@ -1,5 +1,5 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Draconic Hub 3",
+    Title = "Draconic Hub 4",
     Text = "Welcome Draconic Hub Remake",
     Icon = "rbxassetid://102225156206159",
     Duration = 7
@@ -2832,6 +2832,7 @@ timerConnection = game:GetService("RunService").Heartbeat:Connect(function()
 end)
 
 MiscTab = Window:AddTab({ Title = "Misc", Icon = "star", Favoriteable = true })
+
 MiscTab:AddSection("Player Adjustments", "solar/user-rounded-bold")
 
 local Players = game:GetService("Players")
@@ -2849,8 +2850,43 @@ local currentSettings = {
 
 local lastFOV = 70
 local fovChanged = false
+local applyLoopConnection = nil
 
--- Функция для поиска CharacterService
+-- Функция поиска BaseStats модуля
+local function findBaseStatsModule()
+    -- Ищем в ReplicatedStorage
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+        if obj:IsA("ModuleScript") and obj.Name == "BaseStats" then
+            local success, module = pcall(function() return require(obj) end)
+            if success and module and type(module) == "table" then
+                return module
+            end
+        end
+    end
+    
+    -- Ищем в GC
+    for _, obj in ipairs(getgc(true)) do
+        if type(obj) == "table" then
+            local hasFields = true
+            local required = {"Speed", "JumpHeight", "JumpCap", "AirStrafeAcceleration", "Friction"}
+            for _, field in ipairs(required) do
+                if rawget(obj, field) == nil then
+                    hasFields = false
+                    break
+                end
+            end
+            if hasFields then
+                return obj
+            end
+        end
+    end
+    
+    return nil
+end
+
+local BaseStatsModule = findBaseStatsModule()
+
+-- Поиск CharacterService
 local function findCharacterService()
     for _, obj in ipairs(getgc(true)) do
         if type(obj) == "table" then
@@ -2864,19 +2900,25 @@ end
 
 local CharacterService = findCharacterService()
 
--- Функция применения FOV только при изменении
+-- Применение FOV только при изменении
 local function applyFOV(value)
     if value ~= lastFOV then
         lastFOV = value
         fovChanged = true
         
-        -- Применяем через RemoteEvent если есть
-        local Event = ReplicatedStorage:FindFirstChild("Shared") and ReplicatedStorage.Shared:FindFirstChild("UserData") and ReplicatedStorage.Shared.UserData:FindFirstChild("Events") and ReplicatedStorage.Shared.UserData.Events:FindFirstChild("Requests") and ReplicatedStorage.Shared.UserData.Events.Requests:FindFirstChild("SetSetting")
+        -- Через RemoteEvent если есть
+        local Event = ReplicatedStorage:FindFirstChild("Shared") and 
+                     ReplicatedStorage.Shared:FindFirstChild("UserData") and 
+                     ReplicatedStorage.Shared.UserData:FindFirstChild("Events") and 
+                     ReplicatedStorage.Shared.UserData.Events:FindFirstChild("Requests") and 
+                     ReplicatedStorage.Shared.UserData.Events.Requests:FindFirstChild("SetSetting")
         if Event then
-            Event:FireServer("FOV", value)
+            pcall(function()
+                Event:FireServer("FOV", value)
+            end)
         end
         
-        -- Применяем напрямую к камере
+        -- Напрямую к камере
         local camera = workspace.CurrentCamera
         if camera then
             camera.FieldOfView = value
@@ -2884,31 +2926,39 @@ local function applyFOV(value)
     end
 end
 
--- Функция применения настроек через атрибуты и прямую модификацию
-local function applySettings()
+-- Основная функция применения настроек
+local function applyAll()
     local char = LocalPlayer.Character
     if not char then return end
     
     local humanoid = char:FindFirstChild("Humanoid")
     if not humanoid then return end
     
-    -- Применяем через атрибуты персонажа
-    char:SetAttribute("Speed", currentSettings.Speed)
-    char:SetAttribute("JumpHeight", currentSettings.JumpPower)
-    char:SetAttribute("JumpCap", currentSettings.JumpCap)
-    char:SetAttribute("AirStrafeAcceleration", currentSettings.AirStrafeAcceleration)
-    
-    -- Применяем напрямую к Humanoid
-    humanoid.WalkSpeed = currentSettings.Speed / 90
-    humanoid.JumpPower = currentSettings.JumpPower
-    
-    -- Применяем FOV только если изменилось
-    if fovChanged then
-        applyFOV(currentSettings.FOV)
-        fovChanged = false
+    -- 1. Применяем через BaseStats модуль
+    if BaseStatsModule then
+        pcall(function()
+            BaseStatsModule.Speed = currentSettings.Speed / 90
+            BaseStatsModule.JumpHeight = currentSettings.JumpPower
+            BaseStatsModule.JumpCap = currentSettings.JumpCap
+            BaseStatsModule.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
+        end)
     end
     
-    -- Пытаемся применить через DataRegistry
+    -- 2. Применяем через атрибуты персонажа
+    pcall(function()
+        char:SetAttribute("Speed", currentSettings.Speed / 90)
+        char:SetAttribute("JumpHeight", currentSettings.JumpPower)
+        char:SetAttribute("JumpCap", currentSettings.JumpCap)
+        char:SetAttribute("AirStrafeAcceleration", currentSettings.AirStrafeAcceleration)
+    end)
+    
+    -- 3. Применяем напрямую к Humanoid
+    pcall(function()
+        humanoid.WalkSpeed = currentSettings.Speed / 90
+        humanoid.JumpPower = currentSettings.JumpPower
+    end)
+    
+    -- 4. Применяем через DataRegistry если доступно
     local characterModule = nil
     for _, obj in ipairs(getgc(true)) do
         if type(obj) == "table" and rawget(obj, "DataRegistry") and rawget(obj, "Character") then
@@ -2920,54 +2970,62 @@ local function applySettings()
     end
     
     if characterModule and characterModule.DataRegistry then
-        local dataReg = characterModule.DataRegistry
-        if dataReg.Set then
+        pcall(function()
+            characterModule.DataRegistry:Set("Speed", currentSettings.Speed / 90)
+            characterModule.DataRegistry:Set("JumpHeight", currentSettings.JumpPower)
+            characterModule.DataRegistry:Set("JumpCap", currentSettings.JumpCap)
+            characterModule.DataRegistry:Set("AirStrafeAcceleration", currentSettings.AirStrafeAcceleration)
+        end)
+    end
+    
+    -- 5. Применяем через MoveStats
+    if CharacterService then
+        local localChar = CharacterService:GetLocalCharacter()
+        if localChar and localChar.MoveStats and localChar.MoveStats.MoveStats then
             pcall(function()
-                dataReg:Set("Speed", currentSettings.Speed / 90)
-                dataReg:Set("JumpHeight", currentSettings.JumpPower)
-                dataReg:Set("JumpCap", currentSettings.JumpCap)
-                dataReg:Set("AirStrafeAcceleration", currentSettings.AirStrafeAcceleration)
+                local moveStats = localChar.MoveStats.MoveStats
+                moveStats.Speed = currentSettings.Speed / 90
+                moveStats.JumpHeight = currentSettings.JumpPower
+                moveStats.JumpCap = currentSettings.JumpCap
+                moveStats.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
+                if localChar.MoveStats.UpdateAttributes then
+                    localChar.MoveStats:UpdateAttributes()
+                end
             end)
         end
     end
     
-    -- Применяем через MoveStats если доступно
-    if CharacterService then
-        local localChar = CharacterService:GetLocalCharacter()
-        if localChar and localChar.MoveStats then
-            local moveStats = localChar.MoveStats
-            if moveStats.MoveStats then
-                moveStats.MoveStats.Speed = currentSettings.Speed / 90
-                moveStats.MoveStats.JumpHeight = currentSettings.JumpPower
-                moveStats.MoveStats.JumpCap = currentSettings.JumpCap
-                moveStats.MoveStats.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
-                moveStats:UpdateAttributes()
-            end
-        end
+    -- 6. Применяем FOV только если изменилось
+    if fovChanged then
+        applyFOV(currentSettings.FOV)
+        fovChanged = false
     end
 end
 
--- Функция для постоянного обновления (без спама FOV)
+-- Запуск постоянного применения
 local function startAutoApply()
-    RunService.Heartbeat:Connect(function()
-        applySettings()
+    if applyLoopConnection then
+        applyLoopConnection:Disconnect()
+        applyLoopConnection = nil
+    end
+    
+    applyLoopConnection = RunService.Heartbeat:Connect(function()
+        applyAll()
     end)
 end
 
--- Применяем при смене персонажа
+-- Обновление при смене персонажа
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
-    applySettings()
+    applyAll()
 end)
 
--- Запускаем постоянное применение
+-- Запуск
 startAutoApply()
-
--- Первоначальное применение
 task.wait(0.5)
-applySettings()
+applyAll()
 
--- GUI настройки
+-- GUI Элементы
 MiscTab:AddInput("SpeedInput", {
     Title = "Player Speed",
     Default = "1500",
@@ -2978,7 +3036,8 @@ MiscTab:AddInput("SpeedInput", {
         local val = tonumber(Value)
         if val and val >= 1 and val <= 100000000 then
             currentSettings.Speed = val
-            applySettings()
+            fovChanged = false
+            applyAll()
         end
     end
 })
@@ -2993,7 +3052,8 @@ MiscTab:AddInput("JumpPowerInput", {
         local val = tonumber(Value)
         if val and val >= 0.1 and val <= 100000000 then
             currentSettings.JumpPower = val
-            applySettings()
+            fovChanged = false
+            applyAll()
         end
     end
 })
@@ -3008,7 +3068,8 @@ MiscTab:AddInput("JumpCapInput", {
         local val = tonumber(Value)
         if val and val >= 0.1 and val <= 100000000 then
             currentSettings.JumpCap = val
-            applySettings()
+            fovChanged = false
+            applyAll()
         end
     end
 })
@@ -3023,7 +3084,8 @@ MiscTab:AddInput("AirStrafeInput", {
         local val = tonumber(Value)
         if val and val >= 1 and val <= 10000 then
             currentSettings.AirStrafeAcceleration = val
-            applySettings()
+            fovChanged = false
+            applyAll()
         end
     end
 })
@@ -3038,7 +3100,7 @@ MiscTab:AddInput("FovInput", {
         if val and val >= 70 and val <= 120 then
             currentSettings.FOV = val
             fovChanged = true
-            applySettings()
+            applyAll()
         end
     end
 })
