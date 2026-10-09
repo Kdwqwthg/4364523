@@ -1,38 +1,55 @@
--- NextbotESP_Optimized.lua
--- Optimized external Nextbot ESP for URL loadstring usage.
+-- ==================== HIGHLIGHT BOTS MODULE ====================
+-- External module for Draconic Hub X Evade
+-- File: HighlightBots.lua
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local module = {}
+
+-- Services
 local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local PlayersService = game:GetService("Players")
+local LocalPlayer = PlayersService.LocalPlayer
 
-local SCAN_INTERVAL = 0.12
-local DIST_UPDATE_INTERVAL = 0.24
-local STALE_TIMEOUT = 8
+-- Internal variables
+local botHighlights = {}
+local highlightConnection = nil
+local isEnabled = false
+local Fluent = nil
+local Options = nil
 
-local nextbotBillboards = {}
-local nextbotLoop = nil
-local scanAccumulator = 0
-local distAccumulator = 0
-local localHrp = nil
-local localHrpRefreshAccumulator = 0
-local LOCAL_HRP_REFRESH_INTERVAL = 0.5
+-- Store original transparency values
+local originalTransparencies = {}
 
-_G.NextbotESPRunning = false
+-- Список ключевых слов для определения Hitbox
+local HITBOX_KEYWORDS = {
+    "hitbox", "hit", "collision", "collide", "damage", 
+    "hurt", "attack", "body", "root", "torso", 
+    "head", "limb", "arm", "leg"
+}
 
-local function isNextbotPlayer(model)
-    if not model or not model:IsA("Model") or not model.Name then
-        return false
-    end
+-- Функция проверки, является ли часть Hitbox
+local function isHitboxPart(part)
+    if not part or not part:IsA("BasePart") then return false end
     
-    -- Проверяем, находится ли модель в workspace.Players
-    local parent = model.Parent
-    if not parent or parent.Name ~= "Players" or parent.Parent ~= Workspace then
-        return false
+    local nameLower = part.Name:lower()
+    for _, keyword in ipairs(HITBOX_KEYWORDS) do
+        if nameLower:find(keyword) then
+            return true
+        end
     end
+    return false
+end
+
+-- Function to check if a player is a bot (Team = Nextbot в workspace.Players)
+local function isBotPlayer(playerName)
+    local playersFolder = Workspace:FindFirstChild("Players")
+    if not playersFolder then return false end
+    
+    local playerModel = playersFolder:FindFirstChild(playerName)
+    if not playerModel then return false end
     
     -- Проверяем атрибут Team
-    local team = model:GetAttribute("Team")
+    local team = playerModel:GetAttribute("Team")
     if team == "Nextbot" then
         return true
     end
@@ -40,228 +57,340 @@ local function isNextbotPlayer(model)
     return false
 end
 
-local function getDistance(targetPosition)
-    if not localHrp or not localHrp.Parent then
-        local character = LocalPlayer.Character
-        localHrp = character and character:FindFirstChild("HumanoidRootPart")
-    end
-
-    if not localHrp then
-        return 0
-    end
-    return math.floor((targetPosition - localHrp.Position).Magnitude)
-end
-
-local function getAnchorWorldPosition(anchor)
-    if not anchor then
-        return nil
-    end
-
-    if anchor:IsA("Attachment") then
-        return anchor.WorldPosition
-    end
-
-    if anchor:IsA("BasePart") then
-        return anchor.Position
-    end
-
-    return nil
-end
-
-local function resolveAnchor(model)
-    local hrp = model:FindFirstChild("HumanoidRootPart")
-    if hrp and hrp:IsA("BasePart") then
-        local attachment = hrp:FindFirstChild("ESP_Attachment")
-        if not attachment then
-            attachment = Instance.new("Attachment")
-            attachment.Name = "ESP_Attachment"
-            attachment.Parent = hrp
+-- Function to get all Rigs folders in workspace
+local function getAllRigsFolders()
+    local rigsFolders = {}
+    
+    for _, child in ipairs(Workspace:GetChildren()) do
+        if child.Name == "Rigs" and child:IsA("Folder") then
+            table.insert(rigsFolders, child)
         end
-        return attachment, true
     end
-
-    return nil, false
+    
+    return rigsFolders
 end
 
-local function createEsp(part)
-    local gui = Instance.new("BillboardGui")
-    gui.Name = "NextbotESP"
-    gui.AlwaysOnTop = true
-    gui.Size = UDim2.new(0, 200, 0, 50)
-    gui.StudsOffset = Vector3.new(0, 3, 0)
-    gui.MaxDistance = 1000
-    gui.Parent = part
-
-    local label = Instance.new("TextLabel")
-    label.Name = "ESPText"
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.RobotoMono
-    label.TextStrokeTransparency = 0.5
-    label.TextSize = 16
-    label.TextColor3 = Color3.fromRGB(255, 0, 0)
-    label.Text = "Loading..."
-    label.Parent = gui
-
-    return gui, label
+-- Function to check if a model has hitbox parts
+local function hasHitboxParts(model)
+    if not model then return false end
+    
+    for _, part in ipairs(model:GetDescendants()) do
+        if isHitboxPart(part) then
+            return true
+        end
+    end
+    
+    return false
 end
 
-local function clearAll()
-    for model, data in pairs(nextbotBillboards) do
-        if data.gui and data.gui.Parent then
-            data.gui:Destroy()
+-- Function to get hitbox parts from a model
+local function getHitboxParts(model)
+    local hitboxes = {}
+    
+    for _, part in ipairs(model:GetDescendants()) do
+        if isHitboxPart(part) then
+            table.insert(hitboxes, part)
         end
-        if data.fakeAnchor and data.anchor and data.anchor.Parent then
-            data.anchor:Destroy()
+    end
+    
+    return hitboxes
+end
+
+-- Function to make hitboxes visible (transparency = 0)
+local function makeHitboxesVisible(model)
+    if not model then return end
+    
+    local hitboxes = getHitboxParts(model)
+    
+    for _, part in ipairs(hitboxes) do
+        if not originalTransparencies[part] then
+            originalTransparencies[part] = part.Transparency
         end
-        nextbotBillboards[model] = nil
+        part.Transparency = 0
+        part.CanQuery = true
     end
 end
 
-local function collectCandidates()
-    local result = {}
+-- Function to restore original transparency
+local function restoreHitboxesTransparency(model)
+    if not model then return end
+    
+    local hitboxes = getHitboxParts(model)
+    
+    for _, part in ipairs(hitboxes) do
+        if originalTransparencies[part] then
+            part.Transparency = originalTransparencies[part]
+            originalTransparencies[part] = nil
+        end
+    end
+end
 
-    local playersFolder = Workspace:FindFirstChild("Players")
-    if playersFolder then
-        for _, model in ipairs(playersFolder:GetChildren()) do
-            if isNextbotPlayer(model) then
-                result[model] = true
+-- Initialize module with Fluent library
+function module:Init(fluentLib, options)
+    Fluent = fluentLib
+    Options = options
+    print("Highlight Bots module initialized")
+end
+
+-- Function to update/create highlight for a bot
+local function updateBotHighlight(bot)
+    if not bot or not isEnabled then return end
+    
+    -- Проверяем, является ли ботом (Team = Nextbot в workspace.Players)
+    if not isBotPlayer(bot.Name) then return end
+    
+    -- Проверяем наличие Hitbox
+    if hasHitboxParts(bot) then
+        makeHitboxesVisible(bot)
+        
+        if botHighlights[bot] then
+            local oldHighlight = botHighlights[bot]
+            if type(oldHighlight) == "table" then
+                for _, h in ipairs(oldHighlight) do
+                    if h and h.Parent then
+                        h:Destroy()
+                    end
+                end
+            elseif oldHighlight and oldHighlight.Parent then
+                oldHighlight:Destroy()
             end
+            botHighlights[bot] = nil
         end
+        
+        local hitboxes = getHitboxParts(bot)
+        local hitboxHighlights = {}
+        
+        for _, part in ipairs(hitboxes) do
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "DraconicBotHighlight_" .. bot.Name .. "_" .. part.Name
+            highlight.Parent = part
+            highlight.FillTransparency = 0.3
+            highlight.OutlineTransparency = 0
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.OutlineColor = Color3.fromRGB(200, 0, 0)
+            table.insert(hitboxHighlights, highlight)
+        end
+        
+        botHighlights[bot] = hitboxHighlights
+    else
+        restoreHitboxesTransparency(bot)
+        
+        if botHighlights[bot] then
+            local oldHighlights = botHighlights[bot]
+            if type(oldHighlights) == "table" then
+                for _, highlight in ipairs(oldHighlights) do
+                    if highlight and highlight.Parent then
+                        highlight:Destroy()
+                    end
+                end
+            elseif oldHighlights and oldHighlights.Parent then
+                oldHighlights:Destroy()
+            end
+            botHighlights[bot] = nil
+        end
+        
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "DraconicBotHighlight_" .. bot.Name
+        highlight.Parent = bot
+        highlight.FillTransparency = 0.3
+        highlight.OutlineTransparency = 0
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+        highlight.OutlineColor = Color3.fromRGB(200, 0, 0)
+        
+        botHighlights[bot] = highlight
     end
-
-    return result
 end
 
-local function updateLabelsDistanceOnly()
-    for model, data in pairs(nextbotBillboards) do
-        if model and model.Parent and data.anchor and data.anchor.Parent and data.label then
-            local worldPos = getAnchorWorldPosition(data.anchor)
-            if worldPos then
-                local newText = string.format("%s [%dm]", model.Name, getDistance(worldPos))
-                if data.label.Text ~= newText then
-                    data.label.Text = newText
+-- Function to remove highlight from a bot
+local function removeBotHighlight(bot)
+    restoreHitboxesTransparency(bot)
+    
+    if botHighlights[bot] then
+        local highlights = botHighlights[bot]
+        if type(highlights) == "table" then
+            for _, highlight in ipairs(highlights) do
+                if highlight and highlight.Parent then
+                    highlight:Destroy()
+                end
+            end
+        elseif highlights and highlights.Parent then
+            highlights:Destroy()
+        end
+        botHighlights[bot] = nil
+    end
+end
+
+-- Function to clear all bot highlights
+local function clearAllHighlights()
+    for bot in pairs(botHighlights) do
+        restoreHitboxesTransparency(bot)
+    end
+    
+    for bot, highlights in pairs(botHighlights) do
+        if type(highlights) == "table" then
+            for _, highlight in ipairs(highlights) do
+                if highlight and highlight.Parent then
+                    highlight:Destroy()
+                end
+            end
+        elseif highlights and highlights.Parent then
+            highlights:Destroy()
+        end
+    end
+    botHighlights = {}
+end
+
+-- Function to find all bots in Rigs folders
+local function findAllBots()
+    local bots = {}
+    
+    local rigsFolders = getAllRigsFolders()
+    
+    for _, rigsFolder in ipairs(rigsFolders) do
+        for _, model in ipairs(rigsFolder:GetChildren()) do
+            if model:IsA("Model") then
+                -- Проверяем, является ли ботом (Team = Nextbot в workspace.Players)
+                if isBotPlayer(model.Name) then
+                    table.insert(bots, model)
                 end
             end
         end
     end
+    
+    return bots
 end
 
-local function fullScanAndSync()
-    local now = tick()
-    local candidates = collectCandidates()
+-- Main update function for all bots
+local function updateAllHighlights()
+    if not isEnabled then return end
+    
+    local currentBots = {}
+    local bots = findAllBots()
+    
+    for _, bot in ipairs(bots) do
+        currentBots[bot] = true
+        updateBotHighlight(bot)
+    end
+    
+    for bot in pairs(botHighlights) do
+        if not currentBots[bot] or not bot.Parent then
+            removeBotHighlight(bot)
+        end
+    end
+end
 
-    for model in pairs(candidates) do
-        local data = nextbotBillboards[model]
-        if not data then
-            local anchor, fakeAnchor = resolveAnchor(model)
-            if anchor then
-                local gui, label = createEsp(anchor)
-                nextbotBillboards[model] = {
-                    anchor = anchor,
-                    fakeAnchor = fakeAnchor,
-                    gui = gui,
-                    label = label,
-                    lastSeen = now
-                }
-            end
-        else
-            data.lastSeen = now
-            local freshAnchor = select(1, resolveAnchor(model))
-            if freshAnchor and freshAnchor ~= data.anchor then
-                data.anchor = freshAnchor
-                if data.gui then
-                    if data.gui.Adornee ~= freshAnchor then
-                        data.gui.Adornee = freshAnchor
-                    end
-                    if data.gui.Parent ~= freshAnchor then
-                        data.gui.Parent = freshAnchor
-                    end
+-- Start the module
+function module:Start()
+    if isEnabled then return end
+    isEnabled = true
+    
+    originalTransparencies = {}
+    
+    updateAllHighlights()
+    
+    if highlightConnection then
+        highlightConnection:Disconnect()
+    end
+    
+    highlightConnection = RunService.Heartbeat:Connect(function()
+        if isEnabled then
+            updateAllHighlights()
+        end
+    end)
+    
+    local rigsFolders = getAllRigsFolders()
+    
+    for _, rigsFolder in ipairs(rigsFolders) do
+        rigsFolder.ChildAdded:Connect(function(child)
+            if isEnabled and child:IsA("Model") then
+                if isBotPlayer(child.Name) then
+                    task.wait(0.1)
+                    updateBotHighlight(child)
                 end
             end
-        end
-    end
-
-    for model, data in pairs(nextbotBillboards) do
-        if not candidates[model] or not model.Parent or (now - (data.lastSeen or 0) > STALE_TIMEOUT) then
-            if data.gui and data.gui.Parent then
-                data.gui:Destroy()
+        end)
+        
+        rigsFolder.ChildRemoved:Connect(function(child)
+            if isEnabled and child:IsA("Model") then
+                removeBotHighlight(child)
             end
-            if data.fakeAnchor and data.anchor and data.anchor.Parent then
-                data.anchor:Destroy()
-            end
-            nextbotBillboards[model] = nil
-        end
+        end)
     end
-
-    updateLabelsDistanceOnly()
-end
-
-local function start()
-    if nextbotLoop then
-        _G.NextbotESPRunning = true
-        return true
-    end
-
-    _G.NextbotESPRunning = true
-    scanAccumulator = 0
-    distAccumulator = 0
-    localHrp = nil
-    localHrpRefreshAccumulator = 0
-
-    nextbotLoop = RunService.Heartbeat:Connect(function(dt)
-        if not _G.NextbotESPRunning then
-            return
-        end
-
-        local delta = dt or 0
-        scanAccumulator = scanAccumulator + delta
-        distAccumulator = distAccumulator + delta
-        localHrpRefreshAccumulator = localHrpRefreshAccumulator + delta
-
-        if localHrpRefreshAccumulator >= LOCAL_HRP_REFRESH_INTERVAL then
-            localHrpRefreshAccumulator = 0
-            local character = LocalPlayer.Character
-            localHrp = character and character:FindFirstChild("HumanoidRootPart")
-        end
-
-        if scanAccumulator >= SCAN_INTERVAL then
-            scanAccumulator = 0
-            fullScanAndSync()
-        elseif distAccumulator >= DIST_UPDATE_INTERVAL then
-            distAccumulator = 0
-            updateLabelsDistanceOnly()
+    
+    Workspace.ChildAdded:Connect(function(child)
+        if isEnabled and child.Name == "Rigs" and child:IsA("Folder") then
+            child.ChildAdded:Connect(function(grandChild)
+                if isEnabled and grandChild:IsA("Model") then
+                    if isBotPlayer(grandChild.Name) then
+                        task.wait(0.1)
+                        updateBotHighlight(grandChild)
+                    end
+                end
+            end)
+            child.ChildRemoved:Connect(function(grandChild)
+                if isEnabled and grandChild:IsA("Model") then
+                    removeBotHighlight(grandChild)
+                end
+            end)
         end
     end)
-
-    task.spawn(function()
-        for _ = 1, 2 do
-            fullScanAndSync()
-            task.wait(0.08)
-        end
-    end)
-
-    return true
+    
+    if Fluent then
+        Fluent:Notify({
+            Title = "Highlight Bots",
+            Content = "Enabled",
+            Duration = 3
+        })
+    end
+    
+    print("Highlight Bots module started")
 end
 
-local function stop()
-    _G.NextbotESPRunning = false
-    if nextbotLoop then
-        nextbotLoop:Disconnect()
-        nextbotLoop = nil
+-- Stop the module
+function module:Stop()
+    if not isEnabled then return end
+    isEnabled = false
+    
+    if highlightConnection then
+        highlightConnection:Disconnect()
+        highlightConnection = nil
     end
-    localHrp = nil
-    clearAll()
-    return true
+    
+    clearAllHighlights()
+    
+    if Fluent then
+        Fluent:Notify({
+            Title = "Highlight Bots",
+            Content = "Disabled",
+            Duration = 3
+        })
+    end
+    
+    print("Highlight Bots module stopped")
 end
 
-_G.StopNextbotESP = stop
-
-return {
-    Start = start,
-    Stop = stop,
-    ClearAll = clearAll,
-    IsRunning = function()
-        return _G.NextbotESPRunning == true
+-- Toggle function (for keybinds)
+function module:Toggle()
+    if isEnabled then
+        self:Stop()
+    else
+        self:Start()
     end
-}
+    return isEnabled
+end
+
+-- Check if module is running
+function module:IsEnabled()
+    return isEnabled
+end
+
+-- Force update all highlights
+function module:Refresh()
+    if isEnabled then
+        updateAllHighlights()
+    end
+end
+
+return module
