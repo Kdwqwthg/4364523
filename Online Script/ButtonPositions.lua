@@ -6,13 +6,10 @@ local ButtonPositions = {}
 -- List of all GUI buttons
 local buttonGUIs = {
     "DraconicRespawnButtonGUI",
-    "InstantReviveButtonGUI", 
-    "AutoCarryButtonGUI",
     "SlideButtonGUI",
     "GravityButtonGUI",
     "BhopButtonGUI",
     "LagSwitchButtonGUI",
-    "BacktrackButtonGUI"
 }
 
 -- Collect current positions
