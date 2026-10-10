@@ -1,5 +1,5 @@
 -- ==================== HIGHLIGHT BOTS MODULE ====================
--- External module for Draconic Hub X Evade
+-- External module for Draconic Hub X Evade 1
 -- File: HighlightBots.lua
 
 local module = {}
