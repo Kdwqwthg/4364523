@@ -48,7 +48,6 @@ local function isBotPlayer(playerName)
     local playerModel = playersFolder:FindFirstChild(playerName)
     if not playerModel then return false end
     
-    -- Проверяем атрибут Team
     local team = playerModel:GetAttribute("Team")
     if team == "Nextbot" then
         return true
@@ -136,10 +135,8 @@ end
 local function updateBotHighlight(bot)
     if not bot or not isEnabled then return end
     
-    -- Проверяем, является ли ботом (Team = Nextbot в workspace.Players)
     if not isBotPlayer(bot.Name) then return end
     
-    -- Проверяем наличие Hitbox
     if hasHitboxParts(bot) then
         makeHitboxesVisible(bot)
         
@@ -162,7 +159,7 @@ local function updateBotHighlight(bot)
         
         for _, part in ipairs(hitboxes) do
             local highlight = Instance.new("Highlight")
-            highlight.Name = "DraconicBotHighlight_" .. bot.Name .. "_" .. part.Name
+            highlight.Name = "BotHighlight"
             highlight.Parent = part
             highlight.FillTransparency = 0.3
             highlight.OutlineTransparency = 0
@@ -191,7 +188,7 @@ local function updateBotHighlight(bot)
         end
         
         local highlight = Instance.new("Highlight")
-        highlight.Name = "DraconicBotHighlight_" .. bot.Name
+        highlight.Name = "BotHighlight"
         highlight.Parent = bot
         highlight.FillTransparency = 0.3
         highlight.OutlineTransparency = 0
@@ -251,7 +248,6 @@ local function findAllBots()
     for _, rigsFolder in ipairs(rigsFolders) do
         for _, model in ipairs(rigsFolder:GetChildren()) do
             if model:IsA("Model") then
-                -- Проверяем, является ли ботом (Team = Nextbot в workspace.Players)
                 if isBotPlayer(model.Name) then
                     table.insert(bots, model)
                 end
