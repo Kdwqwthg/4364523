@@ -3,7 +3,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
 local SCAN_INTERVAL = 0.12
@@ -20,43 +20,23 @@ local LOCAL_HRP_REFRESH_INTERVAL = 0.5
 
 _G.NextbotESPRunning = false
 
-local knownNextbotNames = {}
-do
-    local npcs = ReplicatedStorage:FindFirstChild("NPCs")
-    if npcs then
-        for _, npc in ipairs(npcs:GetChildren()) do
-            knownNextbotNames[npc.Name] = true
-        end
-    end
-end
-
-local function isNextbotModel(model)
+local function isNextbotPlayer(model)
     if not model or not model:IsA("Model") or not model.Name then
         return false
     end
-
-    if knownNextbotNames[model.Name] then
-        return true
-    end
-
-    local lowerName = model.Name:lower()
-    if lowerName:find("nextbot")
-        or lowerName:find("scp%-")
-        or lowerName:find("^monster")
-        or lowerName:find("^creep")
-        or lowerName:find("^enemy")
-    then
-        return true
-    end
-
-    if Players:FindFirstChild(model.Name) then
+    
+    -- Проверяем, находится ли модель в workspace.Players
+    local parent = model.Parent
+    if not parent or parent.Name ~= "Players" or parent.Parent ~= Workspace then
         return false
     end
-
-    if model:GetAttribute("IsNPC") or model:GetAttribute("Nextbot") then
+    
+    -- Проверяем атрибут Team
+    local team = model:GetAttribute("Team")
+    if team == "Nextbot" then
         return true
     end
-
+    
     return false
 end
 
@@ -131,6 +111,9 @@ local function clearAll()
         if data.gui and data.gui.Parent then
             data.gui:Destroy()
         end
+        if data.fakeAnchor and data.anchor and data.anchor.Parent then
+            data.anchor:Destroy()
+        end
         nextbotBillboards[model] = nil
     end
 end
@@ -138,20 +121,10 @@ end
 local function collectCandidates()
     local result = {}
 
-    local gameFolder = workspace:FindFirstChild("Game")
-    local gamePlayers = gameFolder and gameFolder:FindFirstChild("Players")
-    if gamePlayers then
-        for _, model in ipairs(gamePlayers:GetChildren()) do
-            if isNextbotModel(model) then
-                result[model] = true
-            end
-        end
-    end
-
-    local npcs = workspace:FindFirstChild("NPCs")
-    if npcs then
-        for _, model in ipairs(npcs:GetChildren()) do
-            if isNextbotModel(model) then
+    local playersFolder = Workspace:FindFirstChild("Players")
+    if playersFolder then
+        for _, model in ipairs(playersFolder:GetChildren()) do
+            if isNextbotPlayer(model) then
                 result[model] = true
             end
         end
