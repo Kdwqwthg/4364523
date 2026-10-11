@@ -1,7 +1,7 @@
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "Draconic Hub X Key System",
-    Icon = "rbxassetid://102225156206159",
     Text = "Welcome Draconic Hub Remake",
+    Icon = "rbxassetid://102225156206159",
     Duration = 5
 })
 local screenGui = Instance.new("ScreenGui")
