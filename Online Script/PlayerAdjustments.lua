@@ -14,6 +14,7 @@ local currentSettings = {
 
 local BaseStats = nil
 local started = false
+local lastSentFOV = nil
 
 local function findBaseStats()
     pcall(function()
@@ -30,18 +31,28 @@ local function findBaseStats()
     end
 end
 
-local function applyFOV(value)
-    local Event = ReplicatedStorage:FindFirstChild("Shared")
+local function getFOVEvent()
+    return ReplicatedStorage:FindFirstChild("Shared")
         and ReplicatedStorage.Shared:FindFirstChild("UserData")
         and ReplicatedStorage.Shared.UserData:FindFirstChild("Events")
         and ReplicatedStorage.Shared.UserData.Events:FindFirstChild("Requests")
         and ReplicatedStorage.Shared.UserData.Events.Requests:FindFirstChild("SetSetting")
-    if Event then
-        Event:FireServer("FOV", value)
-    end
+end
+
+local function applyFOV(value, forceRemote)
     local camera = workspace.CurrentCamera
     if camera then
         camera.FieldOfView = value
+    end
+
+    if forceRemote or lastSentFOV ~= value then
+        local Event = getFOVEvent()
+        if Event then
+            pcall(function()
+                Event:FireServer("FOV", value)
+            end)
+            lastSentFOV = value
+        end
     end
 end
 
@@ -53,7 +64,7 @@ function PlayerAdjustments.apply()
         BaseStats.AirStrafeAcceleration = currentSettings.AirStrafeAcceleration
     end
 
-    applyFOV(currentSettings.FOV)
+    applyFOV(currentSettings.FOV, false)
 end
 
 function PlayerAdjustments.setSpeed(value)
@@ -78,7 +89,7 @@ end
 
 function PlayerAdjustments.setFOV(value)
     currentSettings.FOV = value
-    PlayerAdjustments.apply()
+    applyFOV(value, true)
 end
 
 function PlayerAdjustments.start()
@@ -97,6 +108,7 @@ function PlayerAdjustments.start()
 
     LocalPlayer.CharacterAdded:Connect(function()
         task.wait(0.3)
+        lastSentFOV = nil
         PlayerAdjustments.apply()
     end)
 
